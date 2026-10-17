@@ -1,4 +1,4 @@
-// DC_VMU GUI — 2つのVMUイメージを並べて編集・コピーする
+// VMU Workbench GUI — 2つのVMUイメージを並べて編集・コピーする
 import { Vmu, FILE_GAME, BLOCK_SIZE, IMAGE_SIZE } from './src/vmu.js';
 import { parseHeader, headerPosition, iconToRgba, toDci, fromDci } from './src/vms.js';
 import { crcStatus, applyEdit } from './src/edit.js';
@@ -213,7 +213,7 @@ class Pane {
     this.fileName = name;
     this.selected = null;
     this.dirty = false;
-    // 以前の DC_VMU が作ったイメージはルートの位置 (0x44) が 0 で、VMU 本体の BIOS が「システムガ コワレテイマス」と表示する
+    // 以前の版 (DC_VMU) が作ったイメージはルートの位置 (0x44) が 0 で、VMU 本体の BIOS が「システムガ コワレテイマス」と表示する
     if (this.vmu.root.formatted && this.vmu.root.rootBlock !== 255 && confirm(`${name} はルートブロックの「ルートの位置」が 255 ではありません (VMU 本体ではファイル画面が壊れていると表示されます)。直しますか？`)) {
       this.vmu.fixRoot();
       this.dirty = true;

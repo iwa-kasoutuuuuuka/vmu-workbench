@@ -4,7 +4,7 @@
 #     1. (-Image 省略時) テスト用イメージを生成
 #     2. 専用の Flycast 環境 (.emu/) の VMU A1 にイメージを配置
 #     3. vmucheck.cdi (KOS製検証ROM) を起動 → Dreamcast の VMU ドライバで全ファイルを読み、結果を VMU に書く
-#     4. Flycast を終了し、scripts/verify-emu.js で DC_VMU のパーサ結果と突き合わせ
+#     4. Flycast を終了し、scripts/verify-emu.js で VMU Workbench のパーサ結果と突き合わせ
 #
 #   目視確認: powershell -File scripts/emu_verify.ps1 -Image my.bin -Manual
 #     ディスク無しで Flycast を起動 (Dreamcast BIOS のメモリーカード画面でファイル・アイコンを確認)。

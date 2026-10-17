@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DC_VMU MCP サーバー: Claude Code / Antigravity などの AI エージェントから
+// VMU Workbench MCP サーバー: Claude Code / Antigravity などの AI エージェントから
 // VMU イメージとセーブデータを解析・改造・エミュレーター検証するためのツールを提供する。
 // 依存パッケージ無し (MCP の stdio トランスポート = 1 行 1 JSON-RPC メッセージ)。
 //
@@ -43,12 +43,12 @@ const PROTECTED_DIRS = ['src', 'mcp', 'defs', 'test', 'scripts', 'emu', 'node_mo
 
 /**
  * 書き込み先の制限 (D:\DC やソースを誤って書き換えないため):
- * DC_VMU フォルダ内の .bin のみ。コード・定義のフォルダと、入力に使ったイメージは不可
+ * プロジェクトのフォルダ (D:\DC_VMU) 内の .bin のみ。コード・定義のフォルダと、入力に使ったイメージは不可
  */
 function outPath(p, fallbackName, inputs = []) {
   const target = absPath(p ?? join(WORK, fallbackName));
   const rel = relative(ROOT, target);
-  if (!rel || rel.startsWith('..') || isAbsolute(rel)) throw new Error(`書き込み先は DC_VMU フォルダ内にしてください: ${target}`);
+  if (!rel || rel.startsWith('..') || isAbsolute(rel)) throw new Error(`書き込み先はプロジェクトのフォルダ (D:\DC_VMU) 内にしてください: ${target}`);
   if (!/\.bin$/i.test(target)) throw new Error(`書き込み先は .bin ファイルにしてください: ${rel}`);
   const top = rel.split(/[\\/]/)[0].toLowerCase();
   if (PROTECTED_DIRS.includes(top)) throw new Error(`${top}/ には書き込めません (.emu/work/ などを使ってください)`);
@@ -128,10 +128,10 @@ const checksumsText = (sums) => sums.map((c) => (c.inRange
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
 const num = (description) => ({ type: 'number', description });
-const IMG = str('VMU イメージ (128KB .bin) のパス。相対パスは DC_VMU フォルダ基準。"パス@番号" で CLI の履歴の版、"パス#n" で複数ページのファイルのページ');
+const IMG = str('VMU イメージ (128KB .bin) のパス。相対パスはプロジェクトのフォルダ (D:\DC_VMU) 基準。"パス@番号" で CLI の履歴の版、"パス#n" で複数ページのファイルのページ');
 const FILE = str('VMU 上のファイル名 (例 BLEEMMC, SONIC2___S01)');
 const DEF = str('構造定義の id (defs/) または JSON ファイルのパス。省略時は一致する定義を自動選択');
-const OUT = str('書き込み先 (DC_VMU フォルダ内)。省略時は .emu/work/ に作る。入力イメージは上書きしない');
+const OUT = str('書き込み先 (プロジェクトのフォルダ内)。省略時は .emu/work/ に作る。入力イメージは上書きしない');
 
 const tools = {
   vmu_list: {
@@ -299,7 +299,7 @@ const tools = {
   vmu_variants: {
     description: '候補の範囲をそれぞれ書き換えた VMU イメージを一度に作る (フラグ探しの総当たり用)。各候補は patches と同じ形式。作ったイメージを vmu_bleem_run や vmu_emu_verify で試す。',
     inputSchema: S({
-      image: IMG, file: FILE, def: DEF, outDir: str('出力フォルダ (DC_VMU フォルダ内、既定 .emu/work/variants)'),
+      image: IMG, file: FILE, def: DEF, outDir: str('出力フォルダ (プロジェクトのフォルダ内、既定 .emu/work/variants)'),
       variants: { type: 'array', items: S({ name: str('候補名 (ファイル名になる)'), patches: { type: 'array', items: { type: 'object' } } }, ['name', 'patches']) },
     }, ['image', 'file', 'variants']),
     run({ image, file, def, outDir, variants }) {
@@ -334,7 +334,7 @@ const tools = {
       image: IMG, file: FILE, out: OUT,
       description: str('VMU 用の説明 (16 文字まで)'), longDescription: str('Dreamcast 用の説明 (32 文字まで)'),
       animSpeed: num('アイコンのアニメ速度'), iconPng: str('アイコンにする PNG のパス'),
-      exportPng: str('アイコンを書き出す PNG のパス (DC_VMU フォルダ内)'),
+      exportPng: str('アイコンを書き出す PNG のパス (プロジェクトのフォルダ内)'),
     }, ['image', 'file']),
     run({ image, file, out, description, longDescription, animSpeed, iconPng, exportPng }) {
       const vmu = loadImage(image);
@@ -345,7 +345,7 @@ const tools = {
         const target = absPath(exportPng);
         const rel = relative(ROOT, target);
         if (rel.startsWith('..') || isAbsolute(rel) || !/\.png$/i.test(target) || PROTECTED_DIRS.includes(rel.split(/[\\/]/)[0].toLowerCase())) {
-          throw new Error('exportPng は DC_VMU フォルダ内 (.emu/work/ など) の .png にしてください');
+          throw new Error('exportPng は プロジェクトのフォルダ内 (.emu/work/ など) の .png にしてください');
         }
         const icons = readIcons(data, entry);
         if (!icons) throw new Error('VMS ヘッダ (アイコン) がありません');
@@ -400,10 +400,10 @@ const tools = {
       image: str('128KB の VMU イメージ (ミニゲームはブロック 0 から) か、ミニゲーム単体の .vms のパス'),
       seconds: num('動かす秒数 (既定 2、最大 60)'),
       keys: str('キー操作 "秒:ボタン+ボタン,..." (例 "1:right,1.5:,2:a")。ボタンは up down left right a b mode sleep、空で全部離す'),
-      png: str('LCD を保存する .png (DC_VMU フォルダ内、.emu/work/ など。省略可)'),
+      png: str('LCD を保存する .png (プロジェクトのフォルダ内、.emu/work/ など。省略可)'),
       bios: str('64KB の生の VMU BIOS ダンプ (省略可。例 .emu/vmu/vmu_bios_jp.bin)'),
       boot: { type: 'boolean', description: 'bios 指定時、時計の設定を済ませて GAME からミニゲームを起動してから keys を実行する (既定 true)' },
-      out: str('実行後のフラッシュ (ゲームのセーブを含む VMU イメージ) を保存する .bin (DC_VMU フォルダ内。省略可)'),
+      out: str('実行後のフラッシュ (ゲームのセーブを含む VMU イメージ) を保存する .bin (プロジェクトのフォルダ内。省略可)'),
       clock: str('boot 時に BIOS の時計を合わせる日時 (例 "2026-10-17T12:00"。既定は今の時刻)'),
     }, ['image']),
     run({ image, seconds = 2, keys, png, bios, boot = true, out, clock }) {
@@ -437,7 +437,7 @@ const tools = {
         const target = absPath(png);
         const rel = relative(ROOT, target);
         if (rel.startsWith('..') || isAbsolute(rel) || !/\.png$/i.test(target) || PROTECTED_DIRS.includes(rel.split(/[\\/]/)[0].toLowerCase())) {
-          throw new Error('png は DC_VMU フォルダ内 (.emu/work/ など) の .png にしてください');
+          throw new Error('png は プロジェクトのフォルダ内 (.emu/work/ など) の .png にしてください');
         }
         const img = lcdRgba(lcd, 4);
         mkdirSync(dirname(target), { recursive: true });
@@ -475,7 +475,7 @@ const tools = {
   },
 
   vmu_emu_verify: {
-    description: 'Flycast + KallistiOS 検証 ROM で DC_VMU の VMU 読み書きが Dreamcast と一致するかを検証する (npm run verify:emu, 1〜2 分)。',
+    description: 'Flycast + KallistiOS 検証 ROM で VMU Workbench の VMU 読み書きが Dreamcast と一致するかを検証する (npm run verify:emu, 1〜2 分)。',
     inputSchema: S({}),
     async run() {
       const r = await runProcess('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(ROOT, 'scripts', 'emu_verify.ps1')], 300000);
@@ -515,12 +515,12 @@ function runProcess(cmd, args, timeoutMs) {
 
 // ---- MCP (JSON-RPC 2.0 over stdio) ----
 
-const INSTRUCTIONS = `DC_VMU: Dreamcast VMU イメージとセーブデータの解析・改造ツール。
+const INSTRUCTIONS = `VMU Workbench (旧名 DC_VMU): Dreamcast VMU イメージとセーブデータの解析・改造ツール。
 解析の基本手順: vmu_list でファイルと一致する定義を確認 → vmu_fields / vmu_scan / vmu_dump で中身を見る →
 ゲームで状態を変えた前後のイメージを vmu_diff で比べる / 既知の値を vmu_find で探す →
 仮説を vmu_variants や vmu_set で作り、vmu_bleem_run (PS1) や vmu_emu_verify でゲーム/実機ドライバに受理されるか確認 →
 確認できた項目を vmu_def_save で defs/ に保存 (推定の項目は名前に ? を付け、note に根拠を書く)。
-書き込み系のツールは入力イメージを上書きせず、DC_VMU フォルダ内 (既定 .emu/work/) に新しいイメージを作る。`;
+書き込み系のツールは入力イメージを上書きせず、プロジェクトのフォルダ内 (既定 .emu/work/) に新しいイメージを作る。`;
 
 let send = (msg) => {
   process.stdout.write(`${JSON.stringify(msg)}\n`);
@@ -557,7 +557,7 @@ async function handle(msg) {
         return send({ jsonrpc: '2.0', id, result: {
           protocolVersion: params?.protocolVersion ?? '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'dc-vmu', version: VERSION },
+          serverInfo: { name: 'dc-vmu', title: 'VMU Workbench', version: VERSION },
           instructions: INSTRUCTIONS,
         } });
       case 'ping':

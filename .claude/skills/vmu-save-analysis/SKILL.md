@@ -1,11 +1,11 @@
 ---
 name: vmu-save-analysis
-description: Dreamcast VMU のセーブデータ (bleem2 経由の PS1 セーブを含む) を DC_VMU の MCP ツールで解析し、構造定義 (defs/*.json) を作る・改造する・エミュレーターで検証する手順。「このセーブを解析して」「値の場所を探して」「フラグを特定して」「構造定義を作って」「改造セーブがゲームで通るか確認して」などで使う。
+description: Dreamcast VMU のセーブデータ (bleem2 経由の PS1 セーブを含む) を VMU Workbench (旧名 DC_VMU) の MCP ツールで解析し、構造定義 (defs/*.json) を作る・改造する・エミュレーターで検証する手順。「このセーブを解析して」「値の場所を探して」「フラグを特定して」「構造定義を作って」「改造セーブがゲームで通るか確認して」などで使う。
 ---
 
 # VMU セーブデータ解析
 
-DC_VMU の MCP サーバー `dc-vmu` (mcp/server.js) のツールを使う。ツールが見えない場合は、
+VMU Workbench の MCP サーバー `dc-vmu` (mcp/server.js) のツールを使う。ツールが見えない場合は、
 CLI (`node cli.js list|fields|diff|set|...`) で同じことができる (README の「CLI の使い方」)。
 
 ## 原則
@@ -19,7 +19,7 @@ CLI (`node cli.js list|fields|diff|set|...`) で同じことができる (README
 ## 手順
 
 1. **把握**: `vmu_list` でファイル・VMS ヘッダ・CRC・一致する定義を見る。定義があれば `vmu_fields` (値・チェックサム・未解析範囲)。
-   `problems` に「ルートの位置 (0x44)」があれば、以前の DC_VMU で作ったイメージ (VMU 本体の BIOS では壊れていると表示される)。CLI の `node cli.js fixroot <イメージ>` で直すよう伝える。
+   `problems` に「ルートの位置 (0x44)」があれば、以前の版 (DC_VMU) で作ったイメージ (VMU 本体の BIOS では壊れていると表示される)。CLI の `node cli.js fixroot <イメージ>` で直すよう伝える。
 2. **観察**: `vmu_scan` で文字列・同じ値の連続 (未使用領域)・繰り返しレコード (周期と件数) の候補を出し、`vmu_dump` で該当範囲を読む。
    - レコードの区切りは、並んでいる値 (スコアの降順など) と画面の表示の両方で確かめる。
      例: MSX のランキングは「名前→スコア」に見えたが、画面で確認したら「スコア→名前」だった。

@@ -1,4 +1,4 @@
-# DC_VMU 開発ルール
+# VMU Workbench (旧名 DC_VMU) 開発ルール
 
 - 変更のたびに `README.md` を更新する (機能説明・手順・「更新履歴」に日付付きで追記)。
 - Dreamcast 開発の知識・環境は `D:\DC` を参照する:

@@ -95,7 +95,7 @@ test('vmu_patch / vmu_variants はチェックサム・CRC を更新し入力を
 test('書き込み先はプロジェクト内のみ・不正な入力はエラー', async () => {
   const outside = await call('vmu_set', { image: IMG, file: 'DCVMU_SAVE01', assignments: { 所持金: 1 }, out: 'C:/Windows/Temp/x.bin' });
   assert.equal(outside.isError, true);
-  assert.match(outside.text, /DC_VMU フォルダ内/);
+  assert.match(outside.text, /プロジェクトのフォルダ/);
   const missing = await call('vmu_fields', { image: IMG, file: 'NOPE' });
   assert.equal(missing.isError, true);
   const badDef = await call('vmu_def_validate', { def: { id: 'x', title: 'x', match: {}, fields: [] } });

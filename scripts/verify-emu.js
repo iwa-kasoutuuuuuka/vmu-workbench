@@ -1,4 +1,4 @@
-// vmucheck ROM の結果 (VMUCHECK) と DC_VMU のパーサ結果を突き合わせる
+// vmucheck ROM の結果 (VMUCHECK) と VMU Workbench のパーサ結果を突き合わせる
 // 使い方: node scripts/verify-emu.js <実行前.bin> <実行後.bin>
 import { readFileSync } from 'node:fs';
 import { Vmu, FILE_GAME } from '../src/vmu.js';
@@ -33,9 +33,9 @@ if (lines[0] !== 'VMUCHECK 1' || !lines.includes('END')) fail('レポートの�
 // 1. 空き容量
 const free = Number(lines.find((l) => l.startsWith('FREE '))?.split(' ')[1]);
 if (free === before.freeBlocks().length) ok(`空きブロック数 ${free}`);
-else fail(`空きブロック数: DC=${free}, DC_VMU=${before.freeBlocks().length}`);
+else fail(`空きブロック数: DC=${free}, Workbench=${before.freeBlocks().length}`);
 
-// 2. DC_VMUが書いたファイルを Dreamcast が同じ内容で読めるか
+// 2. VMU Workbench が書いたファイルを Dreamcast が同じ内容で読めるか
 const dcFiles = new Map(lines.filter((l) => l.startsWith('FILE ')).map((l) => {
   const [, name, size, crc] = l.split(' ');
   return [name, { size: Number(size), crc }];
@@ -45,11 +45,11 @@ for (const e of before.list()) {
   const data = before.readFile(e);
   const crc = crc32(data).toString(16).padStart(8, '0');
   if (!dc) fail(`${e.name}: Dreamcast側で見つからない`);
-  else if (dc.size !== data.length || dc.crc !== crc) fail(`${e.name}: 内容不一致 DC=${dc.size}/${dc.crc} DC_VMU=${data.length}/${crc}`);
+  else if (dc.size !== data.length || dc.crc !== crc) fail(`${e.name}: 内容不一致 DC=${dc.size}/${dc.crc} Workbench=${data.length}/${crc}`);
   else ok(`${e.name} (${data.length} bytes, crc ${crc})`);
   dcFiles.delete(e.name);
 }
-for (const name of dcFiles.keys()) fail(`${name}: DC_VMUのファイル一覧に無いファイルをDreamcastが検出`);
+for (const name of dcFiles.keys()) fail(`${name}: VMU Workbench のファイル一覧に無いファイルをDreamcastが検出`);
 
 // 2b. VMSヘッダのCRC判定が Dreamcast (KOS vmu_pkg_parse) と一致するか
 const pkg = new Map(lines.filter((l) => l.startsWith('PKG ')).map((l) => l.split(' ').slice(1)));
@@ -57,10 +57,10 @@ for (const e of before.list()) {
   const s = crcStatus(before.readFile(e), e).status;
   if (s === 'none' || e.type === FILE_GAME) continue; // ヘッダ無し・ゲームは対象外
   const expect = s === 'ok' ? 'OK' : 'NG';
-  if (pkg.get(e.name) === expect) ok(`${e.name} CRC判定 ${expect} (DC_VMU: ${s})`);
-  else fail(`${e.name}: CRC判定不一致 DC=${pkg.get(e.name)} DC_VMU=${s}`);
+  if (pkg.get(e.name) === expect) ok(`${e.name} CRC判定 ${expect} (Workbench: ${s})`);
+  else fail(`${e.name}: CRC判定不一致 DC=${pkg.get(e.name)} Workbench=${s}`);
 }
-// 3. Dreamcast (KOS) が書いたファイルを DC_VMU が正しく読めるか
+// 3. Dreamcast (KOS) が書いたファイルを VMU Workbench が正しく読めるか
 const kos = after.find('VMUKOS');
 const expected = Uint8Array.from({ length: 512 * 3 - 100 }, (_, i) => (i * 13 + 7) & 0xff);
 if (!kos) fail('VMUKOS: KOSが書いたファイルが見つからない');

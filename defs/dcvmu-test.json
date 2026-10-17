@@ -1,6 +1,6 @@
 {
   "id": "dcvmu-test",
-  "title": "DC_VMU テストセーブ (サンプル定義)",
+  "title": "VMU Workbench テストセーブ (サンプル定義)",
   "note": "scripts/make-test-image.js が作るテスト用セーブの構造。定義の書き方の見本を兼ねる。",
   "match": { "appId": "^DC_VMU$" },
   "base": "data",

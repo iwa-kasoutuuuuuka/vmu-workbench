@@ -1,11 +1,11 @@
 /*
- * vmucheck — DC_VMU エミュレーター検証用ROM (KallistiOS)
+ * vmucheck — VMU Workbench エミュレーター検証用ROM (KallistiOS)
  *
  * Dreamcast 本来の VMU ドライバ (KOS fs_vmu / vmufs) で A1 の VMU を読み、
  *   1. 全ファイルの生データ CRC32 を計算し、vmu_pkg_parse で VMS ヘッダ (CRC16) を検証
  *   2. 既知パターンのファイル VMUKOS を書き込む (ホスト側パーサの読み取り検証用)
  *   3. 結果を VMUCHECK (テキスト) として書き込む
- * ホスト側の scripts/verify-emu.js が VMUCHECK を読み、DC_VMU のパーサ結果と突き合わせる。
+ * ホスト側の scripts/verify-emu.js が VMUCHECK を読み、VMU Workbench のパーサ結果と突き合わせる。
  */
 #include <kos.h>
 #include <dc/vmufs.h>
@@ -78,7 +78,7 @@ static int check_files(void) {
         if(got != (ssize_t)size) out("FILE %s ERROR", de->name);
         else {
             out("FILE %s %u %08lx", de->name, (unsigned)size, (unsigned long)crc32(buf, size));
-            /* KOS の VMS ヘッダ解析 (CRC16 検証込み)。DC_VMU の CRC 更新が実機側で受理されるかの確認 */
+            /* KOS の VMS ヘッダ解析 (CRC16 検証込み)。VMU Workbench の CRC 更新が実機側で受理されるかの確認 */
             vmu_pkg_t pkg;
             out("PKG %s %s", de->name, vmu_pkg_parse(buf, size, &pkg) == 0 ? "OK" : "NG");
         }
@@ -102,7 +102,7 @@ static int write_raw(const char *path, const void *data, size_t len) {
 
 int main(int argc, char **argv) {
     crc32_init();
-    bfont_draw_str(vram_s + 20, 640, 0, "DC_VMU vmucheck");
+    bfont_draw_str(vram_s + 20, 640, 0, "VMU Workbench vmucheck");
 
     maple_device_t *dev = maple_enum_dev(0, 1);
     if(!dev) {

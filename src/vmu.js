@@ -393,7 +393,7 @@ export class Vmu {
   }
 
   /** 整合性チェック。問題点の配列を返す */
-  /** ルートブロックの「ルートの位置」を 255 にする (以前の DC_VMU が作ったイメージの修正用)。直したら true */
+  /** ルートブロックの「ルートの位置」を 255 にする (以前の版 (DC_VMU) が作ったイメージの修正用)。直したら true */
   fixRoot() {
     if (!this.root.formatted || this.root.rootBlock === ROOT_BLOCK) return false;
     this.view.setUint16(ROOT_BLOCK * BLOCK_SIZE + 0x44, ROOT_BLOCK, true);

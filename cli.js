@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DC_VMU コマンドライン
+// VMU Workbench コマンドライン
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { basename, extname, dirname, join } from 'node:path';
 import { Vmu, FILE_GAME, IMAGE_SIZE } from './src/vmu.js';
@@ -24,10 +24,12 @@ const CRC_LABEL = { ok: 'CRC OK', ng: 'CRC NG', broken: 'CRC範囲外', none: ''
 const padW = (s, width) => s + ' '.repeat(Math.max(0, width - [...s].reduce((w, c) => w + (c.charCodeAt(0) > 0xff ? 2 : 1), 0)));
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join(' ');
 
-const USAGE = `usage:
+const USAGE = `VMU Workbench — Dreamcast VMU エディタ
+
+usage:
   node cli.js list    <vmu.bin>                 ファイル一覧
   node cli.js check   <vmu.bin>                 整合性チェック
-  node cli.js fixroot <vmu.bin>                 ルートの位置 (0x44) を直す (2026-10-17 より前の DC_VMU で作ったイメージ用)
+  node cli.js fixroot <vmu.bin>                 ルートの位置 (0x44) を直す (2026-10-17 より前の版 (DC_VMU) で作ったイメージ用)
   node cli.js cat     <vmu.bin> <名前>          ファイル内容を標準出力へ
   node cli.js export  <vmu.bin> <名前> <out>    取り出し (.dci なら DCI、.vmi なら .vmi + .VMS、それ以外は生データ)
   node cli.js import  <vmu.bin> <file> [名前]   追加 (.dci / .vmi は名前等を自動取得。.vmi は対の .VMS を読む)

@@ -1,4 +1,4 @@
-; DC_VMU 付属のデモ: 起動するたびに回数を数えてフラッシュに保存する (BIOS のフラッシュ書き込みを使う)
+; VMU Workbench 付属のデモ: 起動するたびに回数を数えてフラッシュに保存する (BIOS のフラッシュ書き込みを使う)
 ;   BIOS が必要: node cli.js run vmu.bin --bios <BIOS> --boot --save out.bin
 ; 回数は自分のファイルの 0x0600 (ブロック 3) の先頭バイト。画面の 1 行目に 2 進数で、2 行目に書き込みの結果 (0 = 成功) を表示
 ; MODE で BIOS に戻る
@@ -59,8 +59,8 @@ goodbye:
 ; ---- VMS ヘッダ ----
 .org 0x200
   .byte "SAVE COUNTER    "
-  .byte "DC_VMU flash save test          "
-  .byte "DC_VMU          "
+  .byte "VMU Workbench flash save test   "
+  .byte "VMU WORKBENCH   "
   .word 1,10,0,0,0,0
   .fill 20,0
 .org 0x260

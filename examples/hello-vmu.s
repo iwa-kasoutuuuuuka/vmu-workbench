@@ -1,4 +1,4 @@
-; DC_VMU 付属のデモ ミニゲーム: 十字キーで 8x8 のブロックを動かす (上半分の画面だけ)
+; VMU Workbench 付属のデモ ミニゲーム: 十字キーで 8x8 のブロックを動かす (上半分の画面だけ)
 ;   node cli.js asm examples/hello-vmu.s hello.vms     → ヘッダの CRC 込みで .vms を作る
 ;   node cli.js import vmu.bin hello.vms HELLO --game  → ミニゲームとして書き込む (ブロック 0 から)
 ;   node cli.js run vmu.bin --keys "1:right,1.5:" --png lcd.png
@@ -38,8 +38,8 @@
 ; ---- VMS ヘッダ (ゲームファイルはブロック 1 = 0x200 から) ----
 .org 0x200
   .byte "HELLO VMU       "
-  .byte "DC_VMU demo - move with D-pad   "
-  .byte "DC_VMU          "
+  .byte "VMU Workbench demo (D-pad)      "
+  .byte "VMU WORKBENCH   "
   .word 1           ; アイコン 1 コマ
   .word 10          ; アニメ速度
   .word 0           ; アイキャッチ無し

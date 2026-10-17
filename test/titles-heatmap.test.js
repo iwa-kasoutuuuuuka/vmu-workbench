@@ -20,7 +20,7 @@ test('タイトル DB は読めて、正規表現が正しい', () => {
 
 test('タイトルの推定: DB → VMS ヘッダ → 不明', () => {
   const e = sample.find('DCVMU_SAVE01');
-  assert.equal(lookupTitle(e, sample.readFile(e), db).title, 'DC_VMU: テスト用セーブ');
+  assert.equal(lookupTitle(e, sample.readFile(e), db).title, 'VMU Workbench: テスト用セーブ');
   // DB に無い名前でも VMS ヘッダから
   const vmu = Vmu.format();
   const other = vmu.writeFile('OTHERGAME', sample.readFile(e));

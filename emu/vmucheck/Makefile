@@ -1,5 +1,5 @@
 #
-# vmucheck — DC_VMU エミュレーター検証用ROM
+# vmucheck — VMU Workbench エミュレーター検証用ROM
 # MSYS2 MinGW64 で: source /d/DC/KallistiOS/environ.sh && make cdi
 #
 

@@ -1,4 +1,4 @@
-# DC_VMU — Dreamcast VMU エディタ
+# VMU Workbench — Dreamcast VMU エディタ
 
 Dreamcast のビジュアルメモリ (VMU) のイメージを閲覧・編集・コピーするツールです。
 将来的にはセーブデータの中身を改造できるエディタを目指しています。
@@ -6,7 +6,7 @@ Dreamcast のビジュアルメモリ (VMU) のイメージを閲覧・編集・
 - **GUI**: ブラウザで動く 2 ペインのエディタ (A/B 2 つの VMU を並べてコピー)
 - **CLI**: `node cli.js` で一覧・取り出し・追加・削除・整合性チェック
 - **エミュレーター検証**: Flycast 上の KallistiOS 製 ROM が、Dreamcast 本来の VMU ドライバで
-  DC_VMU の書いたイメージを読み、結果をホスト側で突き合わせる
+  VMU Workbench の書いたイメージを読み、結果をホスト側で突き合わせる
 - **AI エージェント連携**: MCP サーバー (`mcp/server.js`) で Claude Code / Antigravity からセーブ解析ツールを使える
 - **セーブ改造**: HEX エディタ (CRC 自動更新)、タイトル別の構造定義 (名前付きフィールド・独自チェックサム・PS1 コンテナ)、
   アイコン・説明エディタ、変化ヒートマップ、タイトル DB
@@ -27,6 +27,8 @@ Dreamcast のビジュアルメモリ (VMU) のイメージを閲覧・編集・
 | GUI (ブラウザ) | 主な操作を確認済み (ミニゲーム実行・.dcm 読み込みを含む) |
 | 実機転送 ROM を実機で使う / dcload で PC へ取り出す | **未確認** (実機が必要) |
 | VMU BIOS での起動とミニゲーム | 確認済み (BIOS jp1.004 で時計設定 → GAME → 起動。`D:\DC\Sega - VMU` の 125 本中、全本がエミュレーターを止めずに起動・表示) |
+
+旧名は DC_VMU です。フォルダ名 (`D:\DC_VMU`)・MCP サーバー名 (`dc-vmu`)・テスト用セーブの識別子 (`DCVMU_*`) は互換のためそのままにしています。
 
 開発環境 (KallistiOS / Flycast / skills) は `D:\DC` のワークスペースを利用しています。
 
@@ -198,7 +200,7 @@ GUI では HEX エディタと位置が対応しないため、値の変更は�
 ### タイトル DB
 
 `titles/titles.json` に、VMU 上のファイル名 (`vmu`) と PS1 のセーブ名 (`ps1`) の正規表現 → タイトルを書きます。
-**確認できたものだけ**を載せ、`source` に根拠を書く方針です (現在は bleem2・DC_VMU 関連と METAL SLUG X)。
+**確認できたものだけ**を載せ、`source` に根拠を書く方針です (現在は bleem2・VMU Workbench 関連と METAL SLUG X)。
 DB に無いファイルは VMS ヘッダの説明・作成アプリから推定し、bleem2 の PS1 カードは中のセーブのタイトルを出します。
 Dreamcast ソフトのセーブ名の一覧は資料で確認できなかったため未収録です (実物のセーブを確認したら追記してください)。
 
@@ -206,7 +208,7 @@ Dreamcast ソフトのセーブ名の一覧は資料で確認できなかった�
 
 | 定義 | 対象 | 状態 |
 |---|---|---|
-| [dcvmu-test.json](defs/dcvmu-test.json) | DC_VMU のテスト用セーブ | 見本 |
+| [dcvmu-test.json](defs/dcvmu-test.json) | VMU Workbench のテスト用セーブ | 見本 |
 | [msx-ps1-bleem.json](defs/msx-ps1-bleem.json) | **METAL SLUG X (PS1 / SLUS-01212)** の bleem2 メモリーカード内セーブ | チェックサムはゲームで確認済み。項目の意味は一部推定 |
 
 #### METAL SLUG X (PS1) の解析メモ
@@ -234,7 +236,7 @@ Dreamcast ソフトのセーブ名の一覧は資料で確認できなかった�
 | ランキングを改造 (0x210 と 0x214 を書き換え) + チェックサム自動更新 | **`AUTO LOAD COMPLETE.`** |
 | 同じ改造でチェックサムを更新しない (`--no-checksum`) | `LOAD FAILED. DATA LOAD CANCELLED.` |
 
-→ チェックサムの方式は正しく、DC_VMU で改造したセーブはゲームに受理されます。
+→ チェックサムの方式は正しく、VMU Workbench で改造したセーブはゲームに受理されます。
 
 **ランキング画面での確認 (2026-10-17)**: 自動プレイのデモ後 (f≈12000) にランキング画面が出ます。
 目印として 0x20C=1234560、0x210=`DCV`、0x214=99999、0x218=`VMU`、0x220=`EDT` を書き込んだセーブを読ませると、
@@ -326,7 +328,7 @@ bleem2 のメモリーカード有効ビルド (`D:\DC\bleem2-memcard\build\blee
 ```bash
 node cli.js list    vmu.bin                  # 一覧 (VMS ヘッダがあれば CRC OK/NG も表示)
 node cli.js check   vmu.bin                  # 整合性チェック (FAT チェーン・重複など、CRC 不一致は警告)
-node cli.js fixroot vmu.bin                  # 2026-10-17 より前の DC_VMU で作ったイメージを VMU 本体の BIOS 向けに直す
+node cli.js fixroot vmu.bin                  # 2026-10-17 より前の VMU Workbench で作ったイメージを VMU 本体の BIOS 向けに直す
 node cli.js export  vmu.bin SONIC2___S01 out.dci
 node cli.js import  vmu.bin save.dci         # .dci はファイル名等を自動取得
 node cli.js import  vmu.bin save.vms MYNAME  # 生データは名前を指定
@@ -399,7 +401,7 @@ npm test
 
 ## AI エージェント連携 (Claude Code / Antigravity)
 
-DC_VMU の解析機能を **MCP サーバー** (`mcp/server.js`、依存パッケージ無し) として公開しています。
+VMU Workbench の解析機能を **MCP サーバー** (`mcp/server.js`、依存パッケージ無し) として公開しています。
 AI エージェントがツールを呼び出して、セーブの観察 → 差分 → 仮説の改造 → エミュレーターで確認 → 構造定義の保存、を進められます。
 解析の進め方は skill (`vmu-save-analysis`) にまとめてあり、エージェントが自動で参照します。
 
@@ -425,7 +427,7 @@ AI エージェントがツールを呼び出して、セーブの観察 → 差
 | `vmu_emu_verify` | Flycast + 検証 ROM で VMU 読み書きを検証 (`npm run verify:emu`) |
 | `vmu_bleem_run` | bleem2 + Flycast で PS1 セーブを読ませて画面を撮る (キー送信可) |
 
-安全のため、書き込み系のツールは入力のイメージを上書きせず、**DC_VMU フォルダ内** (既定 `.emu/work/`) にだけ書き込みます。
+安全のため、書き込み系のツールは入力のイメージを上書きせず、**プロジェクトのフォルダ内** (既定 `.emu/work/`) にだけ書き込みます。
 
 例: MSX の解放フラグは、手作業では起動を十数回繰り返して特定しましたが、`vmu_find` に
 「元のセーブ (値 0)」と「解放したセーブ (値 255)」を渡すと 0x208 が 1 件だけ返ります。
@@ -454,7 +456,7 @@ skill を変えるときは `.claude/` と `.agent/` の両方を同じ内容に
 ### 仕組み
 
 ```
-DC_VMU (Node)                         Flycast (Dreamcast)
+VMU Workbench (Node)                  Flycast (Dreamcast)
 ─────────────                         ───────────────────
 テストイメージ生成 ──▶ vmu_save_A1.bin ──▶ vmucheck.cdi (KOS)
   scripts/make-test-image.js            ・KOS fs_vmu で全ファイルを読み CRC32 計算
@@ -467,10 +469,10 @@ DC_VMU (Node)                         Flycast (Dreamcast)
 
 これにより、
 
-1. **DC_VMU が書いたファイルを Dreamcast が同じ内容で読めるか** (空きブロック数・各ファイルの CRC32)
+1. **VMU Workbench が書いたファイルを Dreamcast が同じ内容で読めるか** (空きブロック数・各ファイルの CRC32)
 2. **改造後に CRC を自動更新したセーブを Dreamcast が正規データとして受理するか**
-   (KOS `vmu_pkg_parse` の CRC 判定と DC_VMU の判定が全ファイルで一致すること)
-3. **Dreamcast が書いたファイルを DC_VMU が正しく読めるか** (VMUKOS)
+   (KOS `vmu_pkg_parse` の CRC 判定と VMU Workbench の判定が全ファイルで一致すること)
+3. **Dreamcast が書いたファイルを VMU Workbench が正しく読めるか** (VMUKOS)
 4. **Dreamcast が書き込んだ後もイメージが壊れていないか** (整合性チェック)
 
 を自動で確認します。テストイメージには、アイコン/CRC 付きの正規セーブ、断片化したファイル、
@@ -517,7 +519,7 @@ DC_VMU (Node)                         Flycast (Dreamcast)
 `npm run verify:emu` → **PASS**
 - 10 ファイル・空き 144 ブロックの内容が Dreamcast 側と一致
 - CRC 判定: `DCVMU_SAVE01` OK / `DCVMU_PATCH` (改造+CRC 更新) OK / `DCVMU_STRUCT` (構造定義で改造) OK /
-  `DCVMU_BADCRC` (CRC 未更新) NG — DC_VMU と一致
+  `DCVMU_BADCRC` (CRC 未更新) NG — VMU Workbench と一致
 - KOS が書き込んだファイルの読み取り OK、実行後イメージの整合性 OK
 
 ## VMU ミニゲーム エミュレーター
@@ -705,6 +707,11 @@ D:\DC_VMU
 - ミニゲーム エミュレーター: 実機の音との聴き比べ (実機が必要)、BIOS 無しで動かすための BIOS 呼び出しの代替
 
 ## 更新履歴
+
+- **2026-10-17** 名前を **VMU Workbench** に変更 (旧名 DC_VMU)
+  - README・GUI の見出しとタブ・CLI の使い方・MCP の serverInfo.title と説明・skill・検証 ROM の画面・デモのミニゲームの説明・package.json の name (`vmu-workbench`)
+  - 互換のため変えないもの: フォルダ名 `D:\DC_VMU`、MCP サーバー名 `dc-vmu` (Claude Code / Antigravity の登録)、テスト用セーブの中身 (`DCVMU_*`・appId `DC_VMU`)、ブラウザの保存キー
+  - `npm test` 105 件・`verify:emu`・`verify:transfer` PASS
 
 - **2026-10-17** 音・市販ミニゲームのセーブの確認
   - 音を MAME と同じ仕組みに: スピーカー = P1.7 の端子 (P1 / P1DDR / P1FCR とタイマー 1 のパルス)、比較値の取り込み条件、

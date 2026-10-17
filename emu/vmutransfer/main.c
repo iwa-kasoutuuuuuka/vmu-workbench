@@ -161,7 +161,7 @@ static void run_auto(void) {
 }
 
 int main(int argc, char **argv) {
-    bfont_draw_str(vram_s + 20 * 640 + 20, 640, 1, "DC_VMU vmutransfer   A:dump to PC  X:copy A1->A2  Y:restore to A1");
+    bfont_draw_str(vram_s + 20 * 640 + 20, 640, 1, "VMU Workbench transfer  A:dump to PC  X:copy A1->A2  Y:restore to A1");
     out("dcload: %s", dcload_type == DCLOAD_TYPE_NONE ? "none" : "connected (/pc)");
     out("A1 %s / A2 %s", vmu_at(0, 1) ? "VMU" : "-", vmu_at(0, 2) ? "VMU" : "-");
     run_auto();
