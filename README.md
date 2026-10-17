@@ -28,6 +28,8 @@ Dreamcast のビジュアルメモリ (VMU) のイメージを閲覧・編集・
 | 実機転送 ROM を実機で使う / dcload で PC へ取り出す | **未確認** (実機が必要) |
 | VMU BIOS での起動とミニゲーム | 確認済み (BIOS jp1.004 で時計設定 → GAME → 起動。`D:\DC\Sega - VMU` の 125 本中、全本がエミュレーターを止めずに起動・表示) |
 
+リポジトリ: https://github.com/iwa-kasoutuuuuuka/vmu-workbench (非公開)
+
 旧名は DC_VMU です。フォルダ名 (`D:\DC_VMU`)・MCP サーバー名 (`dc-vmu`)・テスト用セーブの識別子 (`DCVMU_*`) は互換のためそのままにしています。
 
 開発環境 (KallistiOS / Flycast / skills) は `D:\DC` のワークスペースを利用しています。
@@ -707,6 +709,8 @@ D:\DC_VMU
 - ミニゲーム エミュレーター: 実機の音との聴き比べ (実機が必要)、BIOS 無しで動かすための BIOS 呼び出しの代替
 
 ## 更新履歴
+
+- **2026-10-18** GitHub に非公開リポジトリ vmu-workbench を作って push (BIOS・Flycast を含む `.emu/` とビルド生成物は含まない)
 
 - **2026-10-17** 名前を **VMU Workbench** に変更 (旧名 DC_VMU)
   - README・GUI の見出しとタブ・CLI の使い方・MCP の serverInfo.title と説明・skill・検証 ROM の画面・デモのミニゲームの説明・package.json の name (`vmu-workbench`)
