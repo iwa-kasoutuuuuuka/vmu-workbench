@@ -161,3 +161,86 @@ export function flashChanges(before, after, Vmu) {
   }
   return { blocks, files: [...files], system };
 }
+
+/**
+ * ブザー (P1.7) の波形を記録しながら動かす。返り値の edges は [秒, 0/1] の変化点
+ * (runScript と同じ keys を受け付ける)
+ */
+export function recordAudio(emu, opts = {}) {
+  const edges = [[emu.time, emu.p17]];
+  const prev = emu.onAudio;
+  emu.onAudio = (t, level) => edges.push([t, level]);
+  const start = emu.time;
+  try {
+    runScript(emu, opts);
+  } finally {
+    emu.onAudio = prev;
+  }
+  return { start, end: emu.time, edges };
+}
+
+/** 変化点を PCM (16bit モノラル) にする。各サンプルの区間で H だった割合を振幅にする (箱型フィルタ) */
+export function edgesToPcm({ start, end, edges }, sampleRate = 22050, volume = 0.25) {
+  const n = Math.max(0, Math.floor((end - start) * sampleRate));
+  const pcm = new Int16Array(n);
+  let e = 0;
+  let level = edges[0]?.[1] ?? 0;
+  for (let i = 0; i < n; i++) {
+    const t0 = start + i / sampleRate;
+    const t1 = t0 + 1 / sampleRate;
+    let high = 0;
+    let t = t0;
+    while (e + 1 < edges.length && edges[e + 1][0] < t1) {
+      const te = Math.max(t0, edges[e + 1][0]);
+      if (level) high += te - t;
+      t = te;
+      e++;
+      level = edges[e][1];
+    }
+    if (level) high += t1 - t;
+    // 直流分を除くため -1〜1 の矩形波にする (H の割合 0〜1 → -1〜1)
+    pcm[i] = Math.round((high * sampleRate * 2 - 1) * volume * 32767);
+  }
+  // 無音 (ずっと L) は 0 に
+  if (edges.length <= 1 && !level) pcm.fill(0);
+  return pcm;
+}
+
+/** PCM を WAV ファイルのバイト列に */
+export function pcmToWav(pcm, sampleRate = 22050) {
+  const buf = new ArrayBuffer(44 + pcm.length * 2);
+  const v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVE');
+  str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  pcm.forEach((x, i) => v.setInt16(44 + i * 2, x, true));
+  return new Uint8Array(buf);
+}
+
+/**
+ * 変化点から鳴っている音の並び (周波数と長さ) を求める。立ち上がりの間隔を周期とし、同じ周期が続く区間をまとめる
+ * @returns {{t: number, dur: number, hz: number, note: string, cents: number}[]} note は平均律 (A4 = 440Hz) で一番近い音名
+ */
+export function audioNotes({ edges }, { minDur = 0.02 } = {}) {
+  const rises = edges.filter(([, l]) => l === 1).map(([t]) => t);
+  const out = [];
+  for (let i = 1; i < rises.length; i++) {
+    const period = rises[i] - rises[i - 1];
+    const last = out[out.length - 1];
+    if (period > 0.1 || period <= 0) continue; // 10Hz 未満は音の切れ目、0 は同じ瞬間に何度も書いたもの
+    // 直前の周期と 1% 以内で、途切れずに続いていれば同じ音 (時刻の足し算は誤差が溜まるので添字で続きを見る)
+    if (last && last.end === i - 1 && Math.abs(last.period - period) / period < 0.01) {
+      last.dur += period;
+      last.end = i;
+    } else out.push({ t: rises[i - 1], dur: period, period, end: i });
+  }
+  const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  return out.filter((n) => n.dur >= minDur).map(({ t, dur, period }) => {
+    const hz = 1 / period;
+    const midi = 69 + 12 * Math.log2(hz / 440);
+    const r = Math.round(midi);
+    return { t, dur, hz, note: `${NAMES[((r % 12) + 12) % 12]}${Math.floor(r / 12) - 1}`, cents: Math.round((midi - r) * 100) };
+  });
+}

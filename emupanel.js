@@ -2,7 +2,7 @@
 // 開いているイメージのコピーを内蔵の LC86K エミュレーター (src/vmuemu.js) で動かす。元のイメージは変えない。
 // キー: 矢印 = 十字キー / Z = A / X = B / M = MODE / S = SLEEP
 import { VmuEmulator, LCD_W, LCD_H, BUTTONS, looksLikeBios } from './src/vmuemu.js';
-import { biosAutoStart, flashChanges } from './src/vmugame.js';
+import { biosAutoStart, flashChanges, edgesToPcm } from './src/vmugame.js';
 import { Vmu } from './src/vmu.js';
 import { crc32 } from './src/crc32.js';
 
@@ -65,7 +65,8 @@ export function openEmulator({ flash, title, onWriteBack }) {
   let timer = 0;
   const pressed = new Set();
   let audio = null;
-  let osc = null;
+  let audioAt = 0; // 次の音を鳴らし始める AudioContext 上の時刻
+  const SAMPLE_RATE = 22050;
 
   const canvas = el('canvas', { width: LCD_W * ZOOM, height: LCD_H * ZOOM, className: 'emu-lcd' });
   const ctx = canvas.getContext('2d');
@@ -153,11 +154,6 @@ export function openEmulator({ flash, title, onWriteBack }) {
     const st = emu.state();
     for (const [k, v] of Object.entries(lcd.icons)) iconRow.querySelector(`.emu-icon-${k}`).classList.toggle('on', lcd.on && v);
     info.textContent = `PC ${st.pc.toString(16).padStart(4, '0')} (${st.bank})  ACC ${st.acc.toString(16).padStart(2, '0')}  SP ${st.sp.toString(16)}  ${Math.round(emu.cycleRate)} Hz  ${st.cycles} サイクル`;
-    const hz = emu.beeper();
-    if (osc) {
-      osc.frequency.value = hz || 1;
-      osc.gain.gain.value = hz && running && soundChk.checked ? 0.05 : 0;
-    }
     if (st.stopReason) {
       status.textContent = `停止: ${st.stopMessage}`;
       status.className = 'emu-status err';
@@ -174,7 +170,13 @@ export function openEmulator({ flash, title, onWriteBack }) {
     const dt = Math.min(0.1, (t - last) / 1000);
     last = t;
     try {
+      // スピーカー (P1.7) の波形をそのまま音にする (周波数だけでなく音の長さ・デューティ比・直接書いた音も再現される)
+      const edges = [[emu.time, emu.p17]];
+      const start = emu.time;
+      emu.onAudio = (time, level) => edges.push([time, level]);
       emu.runFor(dt);
+      emu.onAudio = null;
+      if (audio && soundChk.checked && emu.time > start) playPcm(edgesToPcm({ start, end: emu.time, edges }, SAMPLE_RATE, 0.15));
     } catch (err) {
       setRunning(false);
       status.textContent = `エラー: ${err.message}`;
@@ -199,13 +201,23 @@ export function openEmulator({ flash, title, onWriteBack }) {
   function ensureAudio() {
     if (audio || !soundChk.checked) return;
     audio = new AudioContext();
-    const o = audio.createOscillator();
-    const g = audio.createGain();
-    o.type = 'square';
-    g.gain.value = 0;
-    o.connect(g).connect(audio.destination);
-    o.start();
-    osc = { frequency: o.frequency, gain: g };
+  }
+
+  // フレームごとの PCM を途切れないよう順に並べて鳴らす (遅れたら今から鳴らし直す)
+  function playPcm(pcm) {
+    if (!pcm.length || pcm.every((x) => x === 0)) {
+      audioAt = Math.max(audioAt, audio.currentTime) + pcm.length / SAMPLE_RATE;
+      return;
+    }
+    const buf = audio.createBuffer(1, pcm.length, SAMPLE_RATE);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+    const src = audio.createBufferSource();
+    src.buffer = buf;
+    src.connect(audio.destination);
+    if (audioAt < audio.currentTime || audioAt > audio.currentTime + 0.3) audioAt = audio.currentTime + 0.05;
+    src.start(audioAt);
+    audioAt += buf.duration;
   }
 
   startBtn.addEventListener('click', () => {

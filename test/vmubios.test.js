@@ -60,3 +60,39 @@ test('BIOS の時計: 合わせた日時から進む', { skip }, () => {
   const r = emu.ram[0];
   assert.deepEqual([(r[0x17] << 8) | r[0x18], r[0x19], r[0x1a], r[0x1b], r[0x1c]], [2026, 10, 18, 0, 0], '日付をまたぐ');
 });
+
+// 市販ソフトのおまけミニゲーム (D:\DC\Sega - VMU、同梱しない) がセーブし、起動し直すとそれを読むか
+const GAMES_DIR = 'D:/DC/Sega - VMU/';
+const SAVE_GAMES = ['MarvelVsCapcom2', 'PowerStoneMini', 'TechRomancerMini', 'ChaoAdventure2'];
+const haveGames = bios && SAVE_GAMES.every((g) => existsSync(`${GAMES_DIR}${g}.vms`));
+test('市販ミニゲーム: 遊んで MODE で終えるとセーブし、起動し直すとセーブを読む', { skip: haveGames ? false : 'BIOS か D:/DC/Sega - VMU のゲームが無いので省略' }, () => {
+  const clock = new Date(2026, 9, 17, 12);
+  for (const g of SAVE_GAMES) {
+    const raw = readFileSync(`${GAMES_DIR}${g}.vms`);
+    const data = new Uint8Array(Math.ceil(raw.length / 512) * 512);
+    data.set(raw);
+    const vmu = Vmu.format();
+    vmu.writeFile('GAME', data, { type: FILE_GAME, headerOffset: 1 });
+    const e1 = new VmuEmulator({ flash: vmu.toBytes(), rom: bios });
+    assert.equal(biosAutoStart(e1, { clock }), true, g);
+    const before = Uint8Array.from(e1.flash);
+    e1.runFor(2);
+    for (const k of ['a', 'b', 'a', 'right', 'a', 'left', 'a', 'up', 'a', 'down', 'a', 'b', 'a', 'mode']) {
+      e1.setButtons([k]);
+      e1.runFor(0.15);
+      e1.setButtons([]);
+      e1.runFor(0.8);
+    }
+    e1.runFor(2);
+    const changed = new Set();
+    for (let i = 0; i < before.length; i++) if (before[i] !== e1.flash[i]) changed.add(i);
+    assert.ok(changed.size > 0, `${g}: セーブした`);
+    assert.deepEqual(new Vmu(Uint8Array.from(e1.flash)).check(), [], `${g}: イメージは正常`);
+    const e2 = new VmuEmulator({ flash: Uint8Array.from(e1.flash), rom: bios });
+    let read = 0;
+    e2.onFlashRead = (a) => { if (e2.flashEntries > 0 && changed.has(a)) read++; };
+    assert.equal(biosAutoStart(e2, { clock }), true);
+    e2.runFor(3);
+    assert.ok(read >= changed.size / 2, `${g}: 書いた ${changed.size} バイトのうち ${read} 回読んだ`);
+  }
+});

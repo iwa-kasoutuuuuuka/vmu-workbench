@@ -24,7 +24,7 @@ const ACC = 0x00, PSW = 0x01, B = 0x02, C = 0x03, TRL = 0x04, TRH = 0x05, SP = 0
 const EXT = 0x0d, OCR = 0x0e;
 const T0CNT = 0x10, T0PRR = 0x11, T0L = 0x12, T0LR = 0x13, T0H = 0x14, T0HR = 0x15;
 const T1CNT = 0x18, T1LC = 0x1a, T1L = 0x1b, T1HC = 0x1c, T1H = 0x1d;
-const MCR = 0x20, XBNK = 0x25, VCCR = 0x27, P1 = 0x44, P3 = 0x4c, P3DDR = 0x4d, P3INT = 0x4e, FPR = 0x54, P7 = 0x5c;
+const MCR = 0x20, XBNK = 0x25, VCCR = 0x27, P1 = 0x44, P1DDR = 0x45, P1FCR = 0x46, P3 = 0x4c, P3DDR = 0x4d, P3INT = 0x4e, FPR = 0x54, P7 = 0x5c;
 const VSEL = 0x63, VRMAD1 = 0x64, VRMAD2 = 0x65, VTRBF = 0x66, BTCR = 0x7f;
 
 // 命令ごとのサイクル数 (資料の表)
@@ -82,13 +82,16 @@ export class VmuEmulator {
     this.t0pre = 0;
     this.t0 = [0, 0];
     this.t1 = [0, 0];
+    this.t1cmp = 0; // T1LC の比較値 (書き込みがそのまま入るとは限らない。MAME の lc8670 と同じ条件で取り込む)
+    this.pulse = 0; // タイマー 1 のパルス出力
+    this.p17 = 0; // スピーカー = P1 bit7 の端子 = ((P1 | (パルス & P1FCR)) & P1DDR) の bit7 (MAME の update_port1 と同じ)
     this.baseAcc = 0; // 32768Hz の端数
     this.baseCount = 0;
     this.flashCmd = 0;
     this.flashWrites = 0;
     this.flashEntries = 0;
     this.stopReason = null;
-    this.sfr[0x46] = 0xbf; // P1FCR
+    this.sfr[P1FCR] = 0xbf;
     this.sfr[P3INT] = 0xfd;
     this.sfr[0x5f] = 0xc0; // ISL
     this.sfr[VSEL] = 0xfc;
@@ -149,6 +152,7 @@ export class VmuEmulator {
       case T1H: return this.t1[1];
       // P7: bit1 = 電池の電圧が十分 (MAME svmu の p7_r と同じ)、bit0 = Dreamcast に挿している (単体動作なので 0)
       case P7: return (this.batteryGood ? 0x02 : 0) | (this.sfr[P7] & ~0x03 & 0xff);
+      case P1DDR: case P1FCR: return 0xff; // 書き込み専用 (MAME と同じく読むと 0xff)
       case P3: return (this.sfr[P3] & this.sfr[P3DDR]) | (this.buttons & ~this.sfr[P3DDR] & 0xff);
       case VTRBF: {
         const a = ((this.sfr[VRMAD2] & 1) << 8) | this.sfr[VRMAD1];
@@ -187,8 +191,13 @@ export class VmuEmulator {
         if ((v & 0x80) && !(this.sfr[T0CNT] & 0x80)) this.t0[1] = this.sfr[T0HR];
         break;
       case T1CNT:
-        if ((v & 0x40) && !(this.sfr[T1CNT] & 0x40)) this.t1[0] = this.sfr[T1L];
-        if ((v & 0x80) && !(this.sfr[T1CNT] & 0x80)) this.t1[1] = this.sfr[T1H];
+        // 止まっている間はリロード値を読み込んでおく (MAME と同じ)。bit4 = 比較値を T1LC から取り込む
+        if (!(v & 0x40)) this.t1[0] = this.sfr[T1L];
+        if (!(v & 0x80)) this.t1[1] = this.sfr[T1H];
+        if (v & 0x10) this.t1cmp = this.sfr[T1LC];
+        break;
+      case T1LC:
+        if ((this.sfr[T1CNT] & 0x10) || !(this.sfr[T1CNT] & 0x40)) this.t1cmp = v;
         break;
       case VTRBF: {
         this.wram[((this.sfr[VRMAD2] & 1) << 8) | this.sfr[VRMAD1]] = v;
@@ -198,6 +207,7 @@ export class VmuEmulator {
       default: break;
     }
     this.sfr[r] = v;
+    if (r === P1 || r === P1DDR || r === P1FCR) this.updateSpeaker();
   }
 
   // 間接アドレス @Ri: PSW の IRBK でセル (0-3 / 4-7 / 8-B / C-F) を選び、R2/R3 は SFR 側 (bit8 = 1)
@@ -401,7 +411,11 @@ export class VmuEmulator {
           break;
         }
         case 0x5:
-          if (lo === 0) this.sfr[ACC] = this.flash[((this.sfr[FPR] & 1) << 16) | (this.sfr[TRH] << 8) | this.sfr[TRL]]; // LDF
+          if (lo === 0) { // LDF
+            const fa = ((this.sfr[FPR] & 1) << 16) | (this.sfr[TRH] << 8) | this.sfr[TRL];
+            this.sfr[ACC] = this.flash[fa];
+            this.onFlashRead?.(fa); // 解析用 (セーブを読み直しているかの確認など)
+          }
           else if (lo === 1) this.flashWrite(((this.sfr[FPR] & 1) << 16) | (this.sfr[TRH] << 8) | this.sfr[TRL], this.sfr[ACC]); // STF
           else { // DBNZ
             const a = lo <= 3 ? d9() : this.ind(ri);
@@ -451,7 +465,9 @@ export class VmuEmulator {
             const a = this.sfr[ACC];
             this.sfr[ACC] = ((a >> 1) | (a << 7)) & 0xff;
           } else if (lo === 1) { // LDC
-            this.sfr[ACC] = this.codeByte(((this.sfr[TRH] << 8) | this.sfr[TRL]) + this.sfr[ACC]);
+            const ca = (((this.sfr[TRH] << 8) | this.sfr[TRL]) + this.sfr[ACC]) & 0xffff;
+            this.sfr[ACC] = this.codeByte(ca);
+            if (this.codeBank === 'flash') this.onFlashRead?.(ca); // フラッシュ側で動くゲームは自分のデータを LDC で読む
           } else { // XCH
             const a = lo <= 3 ? d9() : this.ind(ri);
             const v = this.read(a);
@@ -588,10 +604,16 @@ export class VmuEmulator {
       }
       return;
     }
-    if ((s[T1CNT] & 0x40) && ++this.t1[0] > 0xff) {
-      this.t1[0] = s[T1L];
-      s[T1CNT] |= 0x02;
-      if (s[T1CNT] & 0x01) this.raise(IRQ.t1);
+    if (s[T1CNT] & 0x40) {
+      // 8bit: 比較値と一致で P1.7 を H、桁あふれで L (= ブザーの矩形波。周期 256 - T1LR、H の長さ 256 - T1LC)
+      const next = this.t1[0] + 1;
+      if (next === this.t1cmp) this.setPulse(1);
+      if (next > 0xff) {
+        this.t1[0] = s[T1L];
+        this.setPulse(0);
+        s[T1CNT] |= 0x02;
+        if (s[T1CNT] & 0x01) this.raise(IRQ.t1);
+      } else this.t1[0] = next;
     }
     if ((s[T1CNT] & 0x80) && ++this.t1[1] > 0xff) {
       this.t1[1] = s[T1H];
@@ -648,8 +670,24 @@ export class VmuEmulator {
   /** ブザー: タイマー 1 (下位) の矩形波の周波数 (Hz)。鳴っていなければ 0 */
   beeper() {
     const s = this.sfr;
-    if (!(s[T1CNT] & 0x40) || s[T1L] === s[T1LC]) return 0;
+    // 比較値に届かない (T1LC <= T1LR) と H にならないので鳴らない
+    if (!(s[T1CNT] & 0x40) || (s[T1CNT] & 0x20) || this.t1cmp <= s[T1L]) return 0;
+    if (!(s[P1DDR] & 0x80) || !(s[P1FCR] & 0x80) || (s[P1] & 0x80)) return 0; // 端子に出ていない / P1 で H に固定
     return this.cycleRate / (256 - s[T1L]);
+  }
+
+  /** スピーカー (P1.7 の端子) の変化を onAudio(秒, 0/1) で知らせる (波形の書き出し用)。ゲームは P1 を直接書いて鳴らすこともある */
+  setPulse(level) {
+    this.pulse = level;
+    this.updateSpeaker();
+  }
+
+  updateSpeaker() {
+    const s = this.sfr;
+    const level = (((s[P1] | ((this.pulse ? 0x80 : 0) & s[P1FCR])) & s[P1DDR]) >> 7) & 1;
+    if (level === this.p17) return;
+    this.p17 = level;
+    this.onAudio?.(this.time, level);
   }
 
   /**
@@ -668,7 +706,7 @@ export class VmuEmulator {
       pc: this.pc, cycles: this.cycles, time: this.time, irqFlag: this.irqFlag, inIrq: this.inIrq, afterReti: this.afterReti,
       buttons: this.buttons, batteryGood: this.batteryGood, t0pre: this.t0pre, t0: [...this.t0], t1: [...this.t1],
       baseAcc: this.baseAcc, baseCount: this.baseCount, flashCmd: this.flashCmd, flashWrites: this.flashWrites,
-      flashEntries: this.flashEntries, codeBank: this.codeBank,
+      flashEntries: this.flashEntries, codeBank: this.codeBank, t1cmp: this.t1cmp, p17: this.p17, pulse: this.pulse,
     };
     if (withFlash) st.flash = b64(this.flash);
     return st;
@@ -689,6 +727,9 @@ export class VmuEmulator {
     this.wram = un(st.wram, 512);
     if (st.flash) this.flash.set(un(st.flash, FLASH_SIZE));
     for (const k of ['pc', 'cycles', 'time', 'irqFlag', 'inIrq', 'afterReti', 'buttons', 'batteryGood', 't0pre', 'baseAcc', 'baseCount', 'flashCmd', 'flashWrites', 'flashEntries', 'codeBank']) this[k] = st[k];
+    this.t1cmp = st.t1cmp ?? 0;
+    this.p17 = st.p17 ?? 0;
+    this.pulse = st.pulse ?? 0;
     this.t0 = [...st.t0];
     this.t1 = [...st.t1];
     this.stopReason = null;

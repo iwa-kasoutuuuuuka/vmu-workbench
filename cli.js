@@ -16,7 +16,7 @@ import {
 } from './src/structdef.js';
 import { loadDefs } from './src/defs-node.js';
 import { backup, listHistory, resolveImageSpec, restore } from './src/history-node.js';
-import { buildGame, flashFrom, parseKeys, runScript, lcdText, lcdRgba, biosAutoStart, flashChanges, VmuEmulator } from './src/vmugame.js';
+import { buildGame, flashFrom, parseKeys, runScript, lcdText, lcdRgba, biosAutoStart, flashChanges, recordAudio, edgesToPcm, pcmToWav, audioNotes, VmuEmulator } from './src/vmugame.js';
 import { looksLikeBios } from './src/vmuemu.js';
 
 const CRC_LABEL = { ok: 'CRC OK', ng: 'CRC NG', broken: 'CRC範囲外', none: '' };
@@ -53,7 +53,8 @@ const USAGE = `usage:
                                                 ゲームのセーブ (フラッシュ書き込み) は --save out.bin で別ファイルに、
                                                 --write で元のイメージに書き戻す (履歴にバックアップ)。
                                                 --clock "2026-10-17 12:00" で BIOS の時計 (--boot の既定は今の時刻)、
-                                                --suspend state.json で終了時の状態を保存、--resume state.json でその続きから
+                                                --suspend state.json で終了時の状態を保存、--resume state.json でその続きから。
+                                                --wav out.wav でスピーカーの音を WAV に (鳴った音の一覧も表示)
   node cli.js defrag  <vmu.bin>                 断片化したファイルを詰め直す (名前・日時・並びは保つ)
   node cli.js reorder <vmu.bin> <名前> ...      ディレクトリの並び (BIOS の表示順) を変える
   node cli.js patch   <vmu.bin> <名前> <offset> <HEX> [--no-crc]
@@ -98,6 +99,7 @@ const writeBack = takeFlag('--write');
 const clockArg = takeFlag('--clock', true);
 const resumePath = takeFlag('--resume', true);
 const suspendPath = takeFlag('--suspend', true);
+const wavOut = takeFlag('--wav', true);
 const [cmd, imagePath, ...args] = argv;
 
 /** 使う構造定義を決める (--def 指定 > defs/ から自動一致) */
@@ -398,7 +400,8 @@ try {
         if (!rom) throw new Error('--boot には --bios が必要です');
         console.log(biosAutoStart(emu, { clock }) ? `BIOS: 時計を ${clock.toLocaleString('ja-JP')} に合わせてミニゲームを起動しました` : '警告: BIOS からミニゲームを起動できませんでした');
       }
-      const st = runScript(emu, { seconds: seconds === null ? 2 : Number(seconds), keys: parseKeys(keys) });
+      const rec = recordAudio(emu, { seconds: seconds === null ? 2 : Number(seconds), keys: parseKeys(keys) });
+      const st = emu.state();
       const lcd = emu.lcd();
       console.log(lcdText(lcd));
       console.log(`LCD ${lcd.on ? 'オン' : 'オフ'}  PC=0x${st.pc.toString(16).padStart(4, '0')} (${st.bank})  ${st.cycles} サイクル${emu.beeper() ? `  ブザー ${Math.round(emu.beeper())}Hz` : ''}`);
@@ -407,6 +410,14 @@ try {
         const img = lcdRgba(lcd, 4);
         writeFileSync(pngOut, encodePng(img.rgba, img.width, img.height));
         console.log(`${pngOut} に画面を保存`);
+      }
+      const notes = audioNotes(rec).filter((n) => n.hz >= 20 && n.hz <= 20000);
+      if (notes.length) {
+        console.log(`音: ${notes.length} 個 (${notes.slice(0, 8).map((n) => `${Math.round(n.hz)}Hz ${Math.round(n.dur * 1000)}ms`).join(', ')}${notes.length > 8 ? ' ...' : ''})`);
+      }
+      if (wavOut) {
+        writeFileSync(wavOut, pcmToWav(edgesToPcm(rec)));
+        console.log(`${wavOut} に音を保存 (${(rec.end - rec.start).toFixed(1)} 秒)`);
       }
       const ch = flashChanges(before, emu.flash, Vmu);
       if (ch.blocks.length) {

@@ -22,7 +22,7 @@ import {
 import { loadDefs, DEFS_DIR } from '../src/defs-node.js';
 import { listHistory, resolveImageSpec } from '../src/history-node.js';
 import { lookupTitle } from '../src/titles.js';
-import { flashFrom, parseKeys, runScript, lcdText, lcdRgba, biosAutoStart, flashChanges, VmuEmulator } from '../src/vmugame.js';
+import { flashFrom, parseKeys, runScript, lcdText, lcdRgba, biosAutoStart, flashChanges, recordAudio, audioNotes, VmuEmulator } from '../src/vmugame.js';
 import { looksLikeBios } from '../src/vmuemu.js';
 import { loadTitles } from '../src/titles-node.js';
 import {
@@ -419,11 +419,15 @@ const tools = {
       const when = clock ? new Date(clock) : new Date();
       if (Number.isNaN(when.getTime())) throw new Error(`clock の日時が読めません: ${clock}`);
       const booted = rom && boot ? biosAutoStart(emu, { clock: when }) : null;
-      const st = runScript(emu, { seconds, keys: parseKeys(keys) });
+      const rec = recordAudio(emu, { seconds, keys: parseKeys(keys) });
+      const st = emu.state();
       const lcd = emu.lcd();
       const result = { lcdOn: lcd.on, lcd: lcdText(lcd), icons: lcd.icons, beeperHz: Math.round(emu.beeper()), state: st };
       if (booted !== null) result.biosBoot = booted ? 'ミニゲームを起動' : 'BIOS から起動できなかった';
       result.flashChanges = flashChanges(before, emu.flash, Vmu);
+      // 鳴った音 (スピーカー = P1.7 の波形から): 時刻・周波数・長さ・音名
+      result.sound = audioNotes(rec).filter((n) => n.hz >= 20 && n.hz <= 20000).slice(0, 50)
+        .map((n) => ({ t: +(n.t - rec.start).toFixed(3), hz: +n.hz.toFixed(1), ms: Math.round(n.dur * 1000), note: n.note }));
       if (out) {
         const path = outPath(out, `run_${Date.now()}.bin`, [image]);
         writeFileSync(path, emu.flash);
