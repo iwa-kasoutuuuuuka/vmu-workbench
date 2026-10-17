@@ -710,6 +710,9 @@ D:\DC_VMU
 
 ## 更新履歴
 
+- **2026-10-18** コミットのメールアドレスを GitHub の noreply アドレスに置き換え (全履歴を書き直して push)。このリポジトリの git 設定 (user.email) も noreply に。
+  全履歴を再確認し、ROM・BIOS は含まれていない (バイナリはテスト用に合成した test/fixtures/sample.bin だけ。BIOS と同じ SHA1 のファイル無し)
+
 - **2026-10-18** GitHub に非公開リポジトリ vmu-workbench を作って push (BIOS・Flycast を含む `.emu/` とビルド生成物は含まない)
 
 - **2026-10-17** 名前を **VMU Workbench** に変更 (旧名 DC_VMU)
