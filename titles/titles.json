@@ -1,0 +1,14 @@
+{
+  "note": "VMU 上のファイル名・VMS ヘッダの作成アプリ ID・PS1 セーブ名からタイトルを引く表。確認できたものだけを載せ、source に根拠を書く。追記する場合も同じ形式で。",
+  "vmu": [
+    { "match": { "fileName": "^BLEEMMC$" }, "title": "bleem2: PS1 メモリーカード (RLE 圧縮)", "source": "D:/DC/bleem2/src/memcard.c" },
+    { "match": { "fileName": "^BLEEM(LOG|WIN|JIT|DSC|PAD|RLE|MCD|MCT|MC2)$" }, "title": "bleem2: デバッグ用ログ", "source": "D:/DC/bleem2/src (log.c, disc.c, jit2.c など)" },
+    { "match": { "fileName": "^SHOT\\d+$" }, "title": "bleem2: 画面ダンプ (VMU_SHOTS)", "source": "D:/DC/bleem2/src/main.c" },
+    { "match": { "fileName": "^MCTRACE$" }, "title": "bleem2: メモリーカードのトレース", "source": "D:/DC/bleem2-memcard の VMU イメージ" },
+    { "match": { "fileName": "^DCVMU_" }, "title": "DC_VMU: テスト用セーブ", "source": "scripts/make-test-image.js" },
+    { "match": { "fileName": "^(VMUCHECK|VMUKOS)$" }, "title": "DC_VMU: エミュレーター検証 ROM の結果", "source": "emu/vmucheck/main.c" }
+  ],
+  "ps1": [
+    { "match": { "fileName": "^BASLUS-01212" }, "title": "METAL SLUG X (USA)", "source": "実セーブのタイトル (ＭＥＴＡＬＳＬＵＧ　Ｘ) と bleem2 のドキュメント" }
+  ]
+}

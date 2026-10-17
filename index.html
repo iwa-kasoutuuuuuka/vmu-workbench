@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DC_VMU エディタ</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>DC_VMU <small>Dreamcast VMU エディタ</small></h1>
+  <span id="status" role="status"></span>
+</header>
+<main id="panes"></main>
+
+<template id="pane-tpl">
+  <section class="pane">
+    <div class="pane-head">
+      <strong class="slot"></strong>
+      <span class="filename">(未読込)</span>
+      <span class="free"></span>
+    </div>
+    <div class="toolbar">
+      <button data-act="open">開く</button>
+      <button data-act="new">新規</button>
+      <button data-act="save" disabled>保存</button>
+      <button data-act="snapshot" disabled title="現在の状態をブラウザ内の履歴に残す">記録</button>
+      <button data-act="history" disabled title="読み込み・保存・記録した版の一覧">履歴</button>
+      <span class="sep"></span>
+      <button data-act="import" disabled>追加</button>
+      <button data-act="export" disabled>取り出し</button>
+      <button data-act="export-dci" disabled>DCI</button>
+      <button data-act="export-vmi" disabled title=".VMI + .VMS (配布用の形式) で書き出す">VMI</button>
+      <button data-act="copy" disabled class="copy">コピー →</button>
+      <button data-act="delete" disabled class="danger">削除</button>
+      <span class="sep"></span>
+      <button data-act="move-up" disabled title="ディレクトリの並び (BIOS の表示順) で上へ">↑</button>
+      <button data-act="move-down" disabled title="ディレクトリの並び (BIOS の表示順) で下へ">↓</button>
+      <button data-act="defrag" disabled title="断片化したファイルを連続に詰め直す">最適化</button>
+      <button data-act="run-game" disabled title="ブロック 0 のミニゲームを内蔵エミュレーターで動かす">▶ 実行</button>
+    </div>
+    <div class="blockmap" title="ブロックマップ (0〜199)"></div>
+    <div class="drop">ここに .bin / .vmu (VMUイメージ) または .dci / .vms / .vmi をドロップ</div>
+    <table class="files">
+      <thead><tr><th></th><th>ファイル名</th><th>説明</th><th>ブロック</th><th>日時</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="detail"></div>
+    <div class="hexwrap"></div>
+  </section>
+</template>
+
+<input type="file" id="file-input" hidden>
+<script type="module" src="app.js"></script>
+</body>
+</html>

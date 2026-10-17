@@ -1,0 +1,6 @@
+# VMU イメージ・PS1 カードなどは改行変換させない
+*.bin binary
+*.vms binary
+*.dci binary
+*.dcm binary
+*.png binary

@@ -1,0 +1,298 @@
+{
+  "id": "msx-ps1-bleem",
+  "title": "METAL SLUG X (PS1 / SLUS-01212) — bleem2 メモリーカード",
+  "note": "bleem2 が VMU に保存する PS1 メモリーカード (BLEEMMC) 内の Metal Slug X のセーブ。1 件の実セーブのダンプから作成。チェックサム、メインのランキング (スコア・名前)、COMBAT SCHOOL / ANOTHER MISSION の解放フラグ はゲームで確認済み (README 参照)。名前に ? が付いた項目は意味が未確認。",
+  "match": {
+    "fileName": "^BLEEMMC$"
+  },
+  "container": {
+    "type": "bleem-mc",
+    "ps1Save": "^BASLUS-01212"
+  },
+  "base": "file",
+  "checksums": [
+    {
+      "name": "チェックサム",
+      "type": "sum8",
+      "from": "0x0000",
+      "to": "0x092E",
+      "at": "0x092E",
+      "store": "u16le"
+    }
+  ],
+  "fields": [
+    {
+      "name": "セーブ名",
+      "offset": "0x0004",
+      "type": "string",
+      "length": 64,
+      "encoding": "sjis",
+      "group": "PS1 セーブ情報",
+      "note": "PS1 のメモリーカード画面に出るタイトル (Shift_JIS)"
+    },
+    {
+      "name": "アイコン枚数",
+      "offset": "0x0002",
+      "type": "u8",
+      "enum": {
+        "17": "1 枚",
+        "18": "2 枚",
+        "19": "3 枚"
+      },
+      "group": "PS1 セーブ情報"
+    },
+    {
+      "name": "識別子",
+      "offset": "0x0200",
+      "type": "string",
+      "length": 8,
+      "group": "ゲームデータ",
+      "note": "ゲームデータ先頭の文字列 \"MASTER\""
+    },
+    {
+      "name": "COMBAT SCHOOL 解放",
+      "offset": "0x0208",
+      "type": "u16le",
+      "enum": {
+        "0": "未解放",
+        "255": "解放"
+      },
+      "group": "解放状態",
+      "note": "ゲームで確認: 0 だと教官に追い返される。0x00FF / 0xFF00 / 0xFFFF のどれでも解放 (0 以外で解放と推定)"
+    },
+    {
+      "name": "ANOTHER MISSION 解放",
+      "offset": "0x020A",
+      "type": "u16le",
+      "enum": {
+        "0": "未解放",
+        "255": "解放"
+      },
+      "group": "解放状態",
+      "note": "ゲームで確認: 0 以外 (0x00FF / 0xFF00 / 0xFFFF) でメインメニューに ANOTHER MISSION が出る。中に入れるかは未確認"
+    },
+    {
+      "name": "ランキング スコア",
+      "offset": "0x020C",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "ランキング (メイン)",
+      "note": "1 位〜10 位。8 バイト単位 (スコア 4 + 名前 3 + 1 バイト)。デモ後のランキング画面で表示を確認済み"
+    },
+    {
+      "name": "ランキング 名前",
+      "offset": "0x0210",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "ランキング (メイン)",
+      "note": "3 文字。ランキング画面で表示を確認済み"
+    },
+    {
+      "name": "ランキング キャラ?",
+      "offset": "0x0213",
+      "type": "u8",
+      "count": 10,
+      "stride": 8,
+      "enum": {
+        "0": "Marco?",
+        "1": "Eri?",
+        "2": "Tarma?",
+        "3": "Fio?"
+      },
+      "group": "ランキング (メイン)",
+      "note": "0〜3 の値。使用キャラクターと推定 (未確認。ランキング画面には表示されない)"
+    },
+    {
+      "name": "表1 名前",
+      "offset": "0x05f8",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 1 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表1 スコア",
+      "offset": "0x05fc",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 1 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表2 名前",
+      "offset": "0x0648",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 2 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表2 スコア",
+      "offset": "0x064c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 2 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表3 名前",
+      "offset": "0x0698",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 3 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表3 スコア",
+      "offset": "0x069c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 3 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表4 名前",
+      "offset": "0x06e8",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 4 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表4 スコア",
+      "offset": "0x06ec",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 4 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表5 名前",
+      "offset": "0x0738",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 5 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表5 スコア",
+      "offset": "0x073c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 5 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表6 名前",
+      "offset": "0x0788",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 6 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表6 スコア",
+      "offset": "0x078c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 6 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表7 名前",
+      "offset": "0x07d8",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 7 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表7 スコア",
+      "offset": "0x07dc",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 7 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表8 名前",
+      "offset": "0x0828",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 8 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表8 スコア",
+      "offset": "0x082c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 8 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表9 名前",
+      "offset": "0x0878",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 9 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表9 スコア",
+      "offset": "0x087c",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 9 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表10 名前",
+      "offset": "0x08c8",
+      "type": "string",
+      "length": 3,
+      "count": 10,
+      "stride": 8,
+      "group": "その他のランキング表 10 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "表10 スコア",
+      "offset": "0x08cc",
+      "type": "u32le",
+      "count": 10,
+      "stride": 8,
+      "max": 99999999,
+      "group": "その他のランキング表 10 (用途未確認: COMBAT SCHOOL・メインランキングではない)"
+    },
+    {
+      "name": "不明 0x0918?",
+      "offset": "0x0918",
+      "type": "bytes",
+      "length": 20,
+      "group": "未解析",
+      "note": "20 バイトすべて 0x06。設定値の可能性"
+    }
+  ]
+}

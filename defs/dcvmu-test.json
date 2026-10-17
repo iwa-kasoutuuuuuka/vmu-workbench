@@ -1,0 +1,16 @@
+{
+  "id": "dcvmu-test",
+  "title": "DC_VMU テストセーブ (サンプル定義)",
+  "note": "scripts/make-test-image.js が作るテスト用セーブの構造。定義の書き方の見本を兼ねる。",
+  "match": { "appId": "^DC_VMU$" },
+  "base": "data",
+  "fields": [
+    { "name": "所持金", "offset": "0x00", "type": "u32le", "max": 9999999, "group": "ステータス" },
+    { "name": "レベル", "offset": "0x04", "type": "u8", "min": 1, "max": 99, "group": "ステータス" },
+    { "name": "難易度", "offset": "0x05", "type": "u8", "enum": { "0": "Easy", "1": "Normal", "2": "Hard" }, "group": "設定" },
+    { "name": "クリア", "offset": "0x06", "type": "u8", "flags": { "0": "ステージ1", "1": "ステージ2", "2": "ステージ3", "7": "隠し" }, "group": "進行" },
+    { "name": "名前", "offset": "0x10", "type": "string", "length": 8, "group": "ステータス" },
+    { "name": "アイテム", "offset": "0x20", "type": "u8", "count": 5, "group": "持ち物" },
+    { "name": "プレイ時間(秒)", "offset": "0x28", "type": "u32be", "group": "進行" }
+  ]
+}

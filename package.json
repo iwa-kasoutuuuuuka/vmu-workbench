@@ -1,0 +1,15 @@
+{
+  "name": "dc-vmu-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "serve": "node serve.js",
+    "build:rom": "C:/msys64/usr/bin/bash.exe -lc \"export MSYSTEM=MINGW64 TMP=/tmp TEMP=/tmp LANG=C; cd /d/DC_VMU/emu/vmucheck && source /d/DC/KallistiOS/environ.sh && make cdi\"",
+    "verify:emu": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/emu_verify.ps1",
+    "emu:manual": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/emu_verify.ps1 -Manual",
+    "build:transfer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vmu_transfer.ps1",
+    "verify:transfer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vmu_transfer.ps1 -Test"
+  }
+}

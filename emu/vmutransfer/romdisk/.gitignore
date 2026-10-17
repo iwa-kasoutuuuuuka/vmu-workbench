@@ -1,0 +1,3 @@
+# scripts/vmu_transfer.ps1 が用意する (restore.bin / auto)。コミットしない
+*
+!.gitignore

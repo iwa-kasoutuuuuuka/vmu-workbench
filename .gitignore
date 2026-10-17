@@ -1,0 +1,11 @@
+node_modules/
+# Flycast 実行環境 (BIOS を含むため絶対にコミットしない)
+.emu/
+emu/vmucheck/*.o
+emu/vmucheck/*.elf
+emu/vmucheck/*.cdi
+*.log
+emu/vmutransfer/*.o
+emu/vmutransfer/*.elf
+emu/vmutransfer/*.cdi
+emu/vmutransfer/romdisk.img
