@@ -4,3 +4,7 @@
 *.dci binary
 *.dcm binary
 *.png binary
+# MSYS2 / KallistiOS で使うものは LF のまま (CRLF にするとシェルや make が失敗する)
+*.sh text eol=lf
+Makefile text eol=lf
+*.c text eol=lf
