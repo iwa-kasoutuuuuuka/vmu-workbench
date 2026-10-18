@@ -49,17 +49,18 @@ node cli.js list vmu.bin            # CLI: ファイル一覧 (node cli.js で�
 AI エージェントからは、このフォルダで Claude Code を開くと MCP サーバー `dc-vmu` が使えます
 ([AI エージェント連携](#ai-エージェント連携-claude-code--antigravity))。BIOS・ゲームは同梱していません。
 
-### 確認状況 (2026-10-17)
+### 確認状況 (2026-10-18)
 
 | 項目 | 状態 |
 |---|---|
-| 単体テスト (`npm test`) | 105 件すべて合格 (BIOS・市販ミニゲームを使う 4 件はそれがある環境だけ) |
+| 単体テスト (`npm test`) | 107 件すべて合格 (BIOS・市販ミニゲームを使う 4 件はそれがある環境だけ) |
+| GitHub Actions (push ごとに `npm test`) | Ubuntu / Windows × Node 22 / 24 の 4 通りで合格 |
 | ミニゲームのセーブ (BIOS 経由のフラッシュ書き込み) と書き戻し | 確認済み (デモ `save-counter` で 1 → 2 → 3。市販ソフトのおまけ 9 本がセーブし、起動し直すと書いたバイトを読み直す) |
 | ブザーの音 | MAME (lc8670 / svmu) と同じ仕組みで再現 (タイマー 1 のパルスと P1 の値を P1.7 の端子に出す)。実機の音とは聴き比べていない |
 | Dreamcast の VMU ドライバでの読み取り・CRC 受理 (`npm run verify:emu`、Flycast) | PASS |
 | 実機転送 ROM のコピー・書き戻し (`npm run verify:transfer`、Flycast) | PASS |
 | METAL SLUG X (PS1、bleem2) の改造セーブがゲーム内で反映されるか | 確認済み (ランキング・COMBAT SCHOOL 解放) |
-| GUI (ブラウザ) | 主な操作を確認済み (ミニゲーム実行・.dcm 読み込みを含む) |
+| GUI (ブラウザ) | 主な操作を確認済み (ミニゲーム実行・.dcm 読み込み・日本語 / English の切り替えを含む) |
 | 実機転送 ROM を実機で使う / dcload で PC へ取り出す | **未確認** (実機が必要) |
 | VMU BIOS での起動とミニゲーム | 確認済み (BIOS jp1.004 で時計設定 → GAME → 起動。`D:\DC\Sega - VMU` の 125 本中、全本がエミュレーターを止めずに起動・表示) |
 
@@ -417,10 +418,12 @@ node cli.js set     vmu.bin DCVMU_SAVE01 所持金=99999 難易度=Hard "アイ�
 npm test
 ```
 
-96 件 (2026-10-17 時点。`npm test` の結果を参照)。
+107 件 (2026-10-18 時点。`npm test` の結果を参照)。GitHub Actions でも push のたびに実行します ([.github/workflows/test.yml](.github/workflows/test.yml))。
 
 - `test/vmuemu.test.js` / `test/vmuasm.test.js` / `test/vmugame.test.js` — ミニゲーム エミュレーターの命令・フラグ・スタック・タイマー/割り込み・ボタン・LCD 配置・BIOS 呼び出しでの停止・LDF/STF、アセンブラの符号化 (資料のビット配置と照合)、デモをイメージに書いてキー操作で画面が変わること。
 - `test/formats.test.js` — VMI、複数ページ、DCM (4 バイトごとの反転)。
+- `test/vmubios.test.js` — 実物の VMU BIOS での起動・時計・セーブ、市販ミニゲームのセーブの読み直し (BIOS やゲームが無い環境では省略)。
+- `test/i18n.test.js` — GUI の英語表示 (index.html の日本語がすべて訳されること、主なメッセージの英訳)。
 
 - `test/robustness.test.js` — 不具合の回帰テスト (上書き時の容量不足で元が消えない、末尾空白の名前、サイズ変更でスロット・日時を保つ、西暦 100 年未満の日時、壊れたチェーンの削除、途中で切れた DCI、チェックサム定義の検証) と、断片化解消・並べ替え。
 
@@ -758,6 +761,8 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 - [KallistiOS](https://github.com/KallistiOS/KallistiOS) — 検証 ROM・転送 ROM のビルドと VMU ドライバ
 
 ## 更新履歴
+
+- **2026-10-18** README の確認状況・テストの説明を最新に (テスト 107 件、GitHub Actions、言語の切り替え、vmubios / i18n のテスト)
 
 - **2026-10-18** GUI の表示言語の切り替え (日本語 / English、右上で選択。ブラウザに記憶し、初期値はブラウザの言語)
   - `i18n.js`: 画面の文字と alert / confirm / prompt を、決まった文は対応表、値の入る文は正規表現で英訳 (ソースは日本語のまま)。
