@@ -470,7 +470,7 @@ AI エージェントがツールを呼び出して、セーブの観察 → 差
 
 ### Claude Code
 
-プロジェクト直下の `.mcp.json` に登録済みです。`D:\DC_VMU` で Claude Code を開くと、初回にサーバー `dc-vmu` の
+プロジェクト直下の `.mcp.json` に登録済みです (パスはこの PC の `D:/DC_VMU/mcp/server.js`。別の場所に clone したら書き換えてください)。`D:\DC_VMU` で Claude Code を開くと、初回にサーバー `dc-vmu` の
 利用許可を求められるので許可してください。skill は `.claude/skills/vmu-save-analysis/`。
 「BLEEMMC のセーブを解析して」「スコアの位置を探して」などと頼むと、ツールと skill を使って進めます。
 
@@ -762,6 +762,7 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
     構造定義・タイトル DB の中身 (項目名など) と、ブラウザのファイル選択ボタンは訳さない
   - 英語の README (`README.en.md`)。CLI・MCP のメッセージは日本語のまま
   - GitHub Actions で push ごとに `npm test` (Ubuntu / Windows、Node 22 / 24)。BIOS・ゲームを使うテストは自動で省略
+  - CI で見つかった、この PC でしか通らないテストを修正 (`.mcp.json` の絶対パスの存在確認、Windows 専用のパスを使った書き込み先の制限)
   - テスト 2 件追加 (計 107 件)
 
 - **2026-10-18** MIT ライセンスを追加 (LICENSE、package.json)。README に「ライセンスと謝辞」

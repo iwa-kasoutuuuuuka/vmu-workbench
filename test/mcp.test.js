@@ -5,6 +5,8 @@ import { createInterface } from 'node:readline';
 import { existsSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { buildGame } from '../src/vmugame.js';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = '.emu/work/mcp-test';
@@ -93,7 +95,7 @@ test('vmu_patch / vmu_variants はチェックサム・CRC を更新し入力を
 });
 
 test('書き込み先はプロジェクト内のみ・不正な入力はエラー', async () => {
-  const outside = await call('vmu_set', { image: IMG, file: 'DCVMU_SAVE01', assignments: { 所持金: 1 }, out: 'C:/Windows/Temp/x.bin' });
+  const outside = await call('vmu_set', { image: IMG, file: 'DCVMU_SAVE01', assignments: { 所持金: 1 }, out: join(tmpdir(), 'vmuwb-outside.bin') }); // どの OS でもプロジェクトの外になる絶対パス
   assert.equal(outside.isError, true);
   assert.match(outside.text, /プロジェクトのフォルダ/);
   const missing = await call('vmu_fields', { image: IMG, file: 'NOPE' });
@@ -120,8 +122,10 @@ test('エージェント向けの設定・手順書', async () => {
   assert.equal(readFileSync(`${ROOT}/.claude/skills/vmu-save-analysis/SKILL.md`, 'utf8'), readFileSync(`${ROOT}/.agent/skills/vmu-save-analysis/SKILL.md`, 'utf8'));
   for (const f of ['.mcp.json', 'mcp/antigravity.mcp.json']) {
     const cfg = JSON.parse(readFileSync(`${ROOT}/${f}`, 'utf8'));
-    const script = cfg.mcpServers['dc-vmu'].args[0];
-    assert.ok(existsSync(script), `${f}: ${script}`);
+    // 設定の絶対パスはこの PC 用 (D:/DC_VMU)。どこに clone しても通るよう、mcp/server.js を指していることだけ確かめる
+    const script = cfg.mcpServers['dc-vmu'].args[0].replace(/\\/g, '/');
+    assert.match(script, /(^|\/)mcp\/server\.js$/, `${f}: ${script}`);
+    assert.ok(existsSync(`${ROOT}/mcp/server.js`));
   }
 });
 

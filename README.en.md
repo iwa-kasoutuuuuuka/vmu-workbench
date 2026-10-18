@@ -90,7 +90,8 @@ fix them with `node cli.js fixroot vmu.bin`.
 ## AI agents (MCP)
 
 `mcp/server.js` is a dependency-free MCP server (stdio). It is registered in `.mcp.json`, so Claude Code picks it up as server `dc-vmu`
-when this folder is opened. For Antigravity, add the entry in `mcp/antigravity.mcp.json` to `~/.gemini/antigravity/mcp_config.json`.
+when this folder is opened. The path in `.mcp.json` and `mcp/antigravity.mcp.json` is the author's (`D:/DC_VMU/mcp/server.js`);
+change it to where you cloned the repository. For Antigravity, add the entry in `mcp/antigravity.mcp.json` to `~/.gemini/antigravity/mcp_config.json`.
 
 Tools include `vmu_list`, `vmu_fields`, `vmu_dump`, `vmu_diff`, `vmu_find`, `vmu_scan`, `vmu_set`, `vmu_patch`, `vmu_variants`,
 `vmu_heatmap`, `vmu_vms_edit`, `vmu_history`, `vmu_defrag`, `vmu_def_validate`, `vmu_def_save`, `vmu_run_game`, `vmu_emu_verify`
