@@ -1,8 +1,10 @@
 # VMU Workbench — Dreamcast VMU エディタ
 
+**日本語** | [English](README.en.md)
+
 Dreamcast のビジュアルメモリ (VMU) のセーブデータを、管理・改造・解析し、VMU のミニゲームを動かすためのツールです。
 ブラウザで使う GUI、コマンドライン (CLI)、AI エージェント (Claude Code / Antigravity) 用の MCP サーバーの 3 通りで使えます。
-Node.js だけで動きます (追加のパッケージは不要)。
+Node.js だけで動きます (追加のパッケージは不要)。GUI は右上で日本語 / English を切り替えられます。
 
 ### このソフトでできること
 
@@ -81,6 +83,7 @@ AI エージェントからは、このフォルダで Claude Code を開くと 
 - [VMU フォーマット](#vmu-フォーマット)
 - [ディレクトリ構成](#ディレクトリ構成)
 - [今後の予定](#今後の予定)
+- [ライセンスと謝辞](#ライセンスと謝辞)
 - [更新履歴](#更新履歴)
 
 ## 必要なもの
@@ -739,7 +742,29 @@ D:\DC_VMU
 - 実機 VMU での転送 ROM の確認 (dcload-ip / 焼いた CD-R)
 - ミニゲーム エミュレーター: 実機の音との聴き比べ (実機が必要)、BIOS 無しで動かすための BIOS 呼び出しの代替
 
+## ライセンスと謝辞
+
+[MIT License](LICENSE)。
+
+BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユーザーが自分で用意したものを読み込みます)。
+「Dreamcast」「Visual Memory」は株式会社セガの商標です。このソフトはセガとは関係ありません。
+
+参考にした資料:
+
+- Marcus Comstedt 氏の [Dreamcast プログラミング資料](https://mc.pp.se/dc/) — VMU のファイルシステム、VMS / VMI / DCM 形式、LC86K の命令とレジスタ
+- [MAME](https://github.com/mamedev/mame) の LC8670 CPU と svmu ドライバ (BSD-3-Clause) — タイマー・割り込み・クロック・ブザー出力・フォーマットの挙動を合わせるために参照 (コードは複製していません)
+- [KallistiOS](https://github.com/KallistiOS/KallistiOS) — 検証 ROM・転送 ROM のビルドと VMU ドライバ
+
 ## 更新履歴
+
+- **2026-10-18** GUI の表示言語の切り替え (日本語 / English、右上で選択。ブラウザに記憶し、初期値はブラウザの言語)
+  - `i18n.js`: 画面の文字と alert / confirm / prompt を、決まった文は対応表、値の入る文は正規表現で英訳 (ソースは日本語のまま)。
+    構造定義・タイトル DB の中身 (項目名など) と、ブラウザのファイル選択ボタンは訳さない
+  - 英語の README (`README.en.md`)。CLI・MCP のメッセージは日本語のまま
+  - GitHub Actions で push ごとに `npm test` (Ubuntu / Windows、Node 22 / 24)。BIOS・ゲームを使うテストは自動で省略
+  - テスト 2 件追加 (計 107 件)
+
+- **2026-10-18** MIT ライセンスを追加 (LICENSE、package.json)。README に「ライセンスと謝辞」
 
 - **2026-10-18** README の冒頭を「このソフトでできること」(管理・改造・解析・ミニゲーム・実機/エミュレーターでの確認) と「すぐに使う」に書き直し (古い「将来は改造できるように」の記述を削除)
 

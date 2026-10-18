@@ -10,6 +10,15 @@ import { openIconEditor } from './iconeditor.js';
 import { openEmulator } from './emupanel.js';
 import { byteVariability } from './src/analyze.js';
 import { lookupTitle } from './src/titles.js';
+import { initI18n, setLang, getLang, LANGS } from './i18n.js';
+
+// 表示言語 (日本語 / English)。画面の文字・ダイアログを切り替える
+initI18n();
+{
+  const sel = document.getElementById('lang');
+  for (const [code, name] of Object.entries(LANGS)) sel.append(new Option(name, code, false, code === getLang()));
+  sel.addEventListener('change', () => setLang(sel.value));
+}
 
 let titlesDb = { vmu: [], ps1: [] };
 fetch('titles/titles.json').then((r) => r.json()).then((db) => {

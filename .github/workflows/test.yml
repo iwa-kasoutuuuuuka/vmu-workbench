@@ -1,0 +1,22 @@
+# push / pull request のたびに npm test を実行する。
+# BIOS・市販ミニゲーム・Flycast を使うテストは、それらが無い環境では自動で省略される (同梱していないため)。
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24] # npm test の "test/*.test.js" は Node 21 以降の --test が展開する
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test

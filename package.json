@@ -1,6 +1,8 @@
 {
   "name": "vmu-workbench",
   "version": "0.1.0",
+  "description": "Dreamcast VMU editor: save editing/modding, LC86K minigame emulator, MCP analysis tools",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
