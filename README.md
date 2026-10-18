@@ -2,6 +2,8 @@
 
 **日本語** | [English](README.en.md)
 
+[![test](https://github.com/iwa-kasoutuuuuuka/vmu-workbench/actions/workflows/test.yml/badge.svg)](https://github.com/iwa-kasoutuuuuuka/vmu-workbench/actions/workflows/test.yml) [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Dreamcast のビジュアルメモリ (VMU) のセーブデータを、管理・改造・解析し、VMU のミニゲームを動かすためのツールです。
 ブラウザで使う GUI、コマンドライン (CLI)、AI エージェント (Claude Code / Antigravity) 用の MCP サーバーの 3 通りで使えます。
 Node.js だけで動きます (追加のパッケージは不要)。GUI は右上で日本語 / English を切り替えられます。

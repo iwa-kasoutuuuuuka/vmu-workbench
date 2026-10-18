@@ -2,6 +2,8 @@
 
 [日本語](README.md) | **English**
 
+[![test](https://github.com/iwa-kasoutuuuuuka/vmu-workbench/actions/workflows/test.yml/badge.svg)](https://github.com/iwa-kasoutuuuuuka/vmu-workbench/actions/workflows/test.yml) [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A toolkit for **managing, modding and analyzing Dreamcast Visual Memory (VMU) saves, and running VMU minigames**.
 Use it from a browser GUI, the command line (CLI), or AI agents (Claude Code / Antigravity) through an MCP server.
 It runs on Node.js alone (no npm dependencies).
