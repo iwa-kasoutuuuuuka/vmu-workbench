@@ -37,6 +37,24 @@ export const CONTAINERS = {
   'bleem-mc': { label: 'bleem2 PS1 メモリーカード (RLE)', decode: rleDecode, encode: rleEncode },
 };
 
+const GME_HEADER = 3904; // DexDrive (.gme) のヘッダ。その後ろに 128KB の生イメージが続く
+
+/**
+ * PS1 メモリーカードのファイル (.mcr / .mcd / .mc / .bin = 128KB の生イメージ、.gme = DexDrive) から
+ * 生イメージを取り出す。先頭フレームが "MC" でなければエラー
+ */
+export function ps1FromCardFile(bytes) {
+  let card;
+  if (bytes.length === PS1_CARD_SIZE) card = Uint8Array.from(bytes);
+  else if (bytes.length === GME_HEADER + PS1_CARD_SIZE && String.fromCharCode(...bytes.subarray(0, 11)) === '123-456-STD') {
+    card = Uint8Array.from(bytes.subarray(GME_HEADER));
+  } else {
+    throw new Error(`PS1 メモリーカードの大きさではありません (${bytes.length} バイト。128KB の .mcr / .mcd か DexDrive の .gme)`);
+  }
+  if (card[0] !== 0x4d || card[1] !== 0x43) throw new Error('PS1 メモリーカードではありません (先頭が "MC" ではない)');
+  return card;
+}
+
 /** PS1 カードのディレクトリ (使用中の先頭ブロックのみ) */
 export function ps1Directory(card) {
   const list = [];

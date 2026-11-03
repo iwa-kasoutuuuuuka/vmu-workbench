@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Vmu, BLOCK_SIZE } from '../src/vmu.js';
 import {
-  CONTAINERS, PS1_CARD_SIZE, PS1_BLOCK_SIZE, ps1Directory, ps1FindSave, ps1ReadSave, ps1WriteSave,
+  CONTAINERS, PS1_CARD_SIZE, PS1_BLOCK_SIZE, ps1Directory, ps1FindSave, ps1ReadSave, ps1WriteSave, ps1FromCardFile,
 } from '../src/containers.js';
 import {
   validateDef, matches, openView, resolveViewFields, readField, setFields, checksumStatus, applyChecksums, CHECKSUMS,
@@ -197,4 +197,16 @@ test('非コンテナ定義でもチェックサムを適用できる', () => {
   const b = Uint8Array.from(out);
   b[0] = 0;
   assert.equal(applyChecksums(def, b, 0)[0].bytes[0], 1 ^ 2 ^ 3);
+});
+
+test('PS1 カードのファイル (.mcr / .gme) を読み、MC1 で包み直すと元に戻る', () => {
+  const card = makeCard([{ name: 'BASLUS-01212', slots: [1], fill: 7 }]);
+  assert.deepEqual(ps1FromCardFile(card), card);
+  const gme = new Uint8Array(3904 + PS1_CARD_SIZE);
+  gme.set(new TextEncoder().encode('123-456-STD'), 0);
+  gme.set(card, 3904);
+  assert.deepEqual(ps1FromCardFile(gme), card);
+  assert.deepEqual(rle.decode(rle.encode(ps1FromCardFile(card))), card);
+  assert.throws(() => ps1FromCardFile(new Uint8Array(1000)), /大きさ/);
+  assert.throws(() => ps1FromCardFile(new Uint8Array(PS1_CARD_SIZE)), /MC/);
 });

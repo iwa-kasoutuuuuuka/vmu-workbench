@@ -9,3 +9,5 @@ emu/vmutransfer/*.o
 emu/vmutransfer/*.elf
 emu/vmutransfer/*.cdi
 emu/vmutransfer/romdisk.img
+emu/vmutransfer/pcdir.h
+emu/vmutransfer/pcdir.h.new

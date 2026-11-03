@@ -380,6 +380,9 @@ node cli.js convert card.dcm card.bin        # Nexus の .dcm ⇔ 生イメー�
 node cli.js asm     examples/hello-vmu.s hello.vms   # ミニゲームをアセンブル (VMS ヘッダの CRC も計算)
 node cli.js import  vmu.bin hello.vms HELLO --game   # ミニゲームとして書き込む (ブロック 0 から)
 node cli.js run     vmu.bin --keys "1:right,1.5:" --seconds 2 --png lcd.png   # ミニゲームを動かして画面を表示
+node cli.js ps1-list   vmu.bin              # bleem2 の PS1 メモリーカード (BLEEMMC) の中のセーブ一覧
+node cli.js ps1-export vmu.bin BLEEMMC card.mcr   # PS1 カードを 128KB の生イメージ (.mcr / .mcd) で書き出し
+node cli.js ps1-import vmu.bin BLEEMMC card.mcr   # 編集したカード (.mcr / .mcd / .gme) を圧縮して戻す (無ければ作る)
 node cli.js title   vmu.bin                  # タイトルの推定と根拠 (タイトル DB → VMS ヘッダ → PS1 セーブ)
 node cli.js heatmap SAVE old.bin mid.bin new.bin   # 古い順に並べたセーブで、よく変わる範囲 (フィールド名付き)
 node cli.js desc    vmu.bin SAVE "MY SAVE" "DESCRIPTION FOR DC"  # 説明文 (CRC 更新)
@@ -658,6 +661,14 @@ KallistiOS の ROM `emu/vmutransfer` で、実機の VMU 全体 (128KB、ブロ�
 
 書き込みはブロックごとに読み返して確認し (3 回まで再試行)、フォーマット情報のあるルートブロック (255) を最後に書きます。
 
+**PC からの自動操作 (dcload 起動時)**：PC の `VMU_PC_DIR/vmu_cmd` があると、ボタンを押さずにその命令を実行します。
+命令は `dump` / `restore` / `copy` と対象のスロット `a1`〜`d2` (例 `dump restore a1`。`dump` は書き戻しより先に行うので、
+書き戻す前の控えになります)。終わると結果 (`dump OK <crc32>` / `restore OK <crc32>` / `END OK`) を `VMU_PC_DIR/vmu_result.txt` に書き、
+`vmu_cmd` を消して dcload に戻ります。`VMU_PC_DIR` はビルド時に `make VMU_PC_DIR=/pc/...` で決めます (既定 `/pc`。
+dc-tool-ip には PC 側のフォルダを指定するオプションがないため)。
+[Dreamcast-Dev-Tools-for-BBA](https://github.com/iwa-kasoutuuuuuka/Dreamcast-Dev-Tools-for-BBA) の `scripts/dc_vmu.ps1` がこれを使い、
+吸い出し → `.mcr` での編集 → 書き戻しをコマンド 1 つずつで行います。
+
 ```bash
 npm run build:transfer                                   # 取り出し用 (dcload で起動: dc-tool-ip -t <IP> -c <保存先> -x emu/vmutransfer/vmutransfer.elf)
 powershell -File scripts/vmu_transfer.ps1 -Restore my.bin   # my.bin (.dcm も可) を埋め込んだ CDI を作る → 実機で Y → START
@@ -761,6 +772,16 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 - [KallistiOS](https://github.com/KallistiOS/KallistiOS) — 検証 ROM・転送 ROM のビルドと VMU ドライバ
 
 ## 更新履歴
+
+- **2026-11-03** PS1 メモリーカード (.mcr) の出し入れと、転送 ROM の PC からの自動操作
+  - CLI `ps1-list` / `ps1-export` / `ps1-import`：bleem2 の `BLEEMMC` (RLE 圧縮した PS1 カード) と 128KB の生イメージ
+    (.mcr / .mcd、読み込みは DexDrive の .gme も) の変換。MemcardRex などの PS1 用ツールで編集したカードを戻せる。
+    書き出し → 取り込みで `BLEEMMC` がバイト単位で元と一致することを確認
+  - `emu/vmutransfer`：dcload で起動したとき `VMU_PC_DIR/vmu_cmd` の命令 (dump / restore / copy、スロット a1〜d2) を実行して
+    結果を `vmu_result.txt` に書き、dcload に戻る。`make VMU_PC_DIR=/pc/...` で PC 側のフォルダを決める (`pcdir.h` を生成)
+  - Dreamcast-Dev-Tools-for-BBA に取り込み (`third_party/vmu-workbench`、`scripts/dc_vmu.ps1`)
+  - `/pc` への読み書きを 4KB ずつに分けた (実機で 128KB を一度に `fs_write` すると戻らなかった)。
+    これで実機 (BBA、dcload-ip 2.0.3) で VMU 全体の PC への吸い出しと、同じ内容の書き戻し (全ブロックの読み直しが一致) を確認
 
 - **2026-10-18** README の確認状況・テストの説明を最新に (テスト 107 件、GitHub Actions、言語の切り替え、vmubios / i18n のテスト)
 

@@ -18,6 +18,7 @@ import { loadDefs } from './src/defs-node.js';
 import { backup, listHistory, resolveImageSpec, restore } from './src/history-node.js';
 import { buildGame, flashFrom, parseKeys, runScript, lcdText, lcdRgba, biosAutoStart, flashChanges, recordAudio, edgesToPcm, pcmToWav, audioNotes, VmuEmulator } from './src/vmugame.js';
 import { looksLikeBios } from './src/vmuemu.js';
+import { CONTAINERS, PS1_CARD_SIZE, ps1Directory, ps1FromCardFile } from './src/containers.js';
 
 const CRC_LABEL = { ok: 'CRC OK', ng: 'CRC NG', broken: 'CRC範囲外', none: '' };
 // 全角文字を幅2として右を埋める (表示の桁揃え用)
@@ -38,6 +39,10 @@ usage:
   node cli.js delete  <vmu.bin> <名前>          削除
   node cli.js format  <out.bin>                 空のイメージを作成 (.dcm なら DCM 形式)
   node cli.js convert <in> <out>                .bin ⇔ .dcm (Nexus のダンプ。4 バイトごとにバイト順反転) の変換
+  node cli.js ps1-list   <vmu.bin> [名前]         bleem2 の PS1 メモリーカード (既定 BLEEMMC) のセーブ一覧
+  node cli.js ps1-export <vmu.bin> <名前> <out.mcr>  PS1 カードを生イメージ (.mcr / .mcd、128KB) で書き出し
+  node cli.js ps1-import <vmu.bin> <名前> <in.mcr>   PS1 カード (.mcr / .mcd / .gme) を圧縮して VMU のファイルに戻す
+                                                (MemcardRex などで編集したカードを bleem2 で使う。無ければ作る)
   node cli.js title   <vmu.bin>                 タイトルの推定 (タイトル DB・VMS ヘッダ・PS1 セーブ) と根拠
   node cli.js heatmap <名前> <img1> <img2> ...  複数のセーブ (古い順) でよく変わる範囲 (定義があればフィールド名付き)
   node cli.js desc    <vmu.bin> <名前> <説明16> [説明32]  VMS ヘッダの説明文を書き換え (CRC 更新)
@@ -202,6 +207,37 @@ try {
       }
       console.log(problems.length ? `${problems.length}件の問題` : 'OK');
       process.exitCode = problems.length ? 1 : 0;
+      break;
+    }
+    case 'ps1-list': {
+      const vmu = load();
+      const name = args[0] ?? 'BLEEMMC';
+      const card = CONTAINERS['bleem-mc'].decode(vmu.readFile(need(vmu.find(name), name)));
+      if (!card) throw new Error(`${name} は bleem2 の PS1 メモリーカード (MC1) ではありません`);
+      const saves = ps1Directory(card);
+      for (const s of saves) console.log(`${String(s.slot).padStart(2)}  ${s.name.padEnd(20)} ${Math.ceil(s.size / 8192)}blk`);
+      console.log(`${saves.length} 件、空き ${15 - saves.reduce((n, s) => n + Math.ceil(s.size / 8192), 0)} / 15 ブロック`);
+      break;
+    }
+    case 'ps1-export': {
+      const vmu = load();
+      if (args.length < 2) throw new Error('ps1-export <vmu.bin> <名前> <out.mcr>');
+      const card = CONTAINERS['bleem-mc'].decode(vmu.readFile(need(vmu.find(args[0]), args[0])));
+      if (!card) throw new Error(`${args[0]} は bleem2 の PS1 メモリーカード (MC1) ではありません`);
+      writeFileSync(args[1], card);
+      console.log(`${args[1]} (${card.length} バイト、セーブ ${ps1Directory(card).length} 件) を書き出しました`);
+      break;
+    }
+    case 'ps1-import': {
+      const vmu = load();
+      if (args.length < 2) throw new Error('ps1-import <vmu.bin> <名前> <in.mcr>');
+      const card = ps1FromCardFile(readFileSync(args[1]));
+      const packed = CONTAINERS['bleem-mc'].encode(card);
+      const entry = vmu.find(args[0]);
+      if (entry) applyEdit(vmu, entry, packed, { fixCrc: false });
+      else vmu.writeFile(args[0], packed);
+      saveImage(vmu.toBytes());
+      console.log(`${args[0]} を置き換えました (${packed.length} バイト、${Math.ceil(packed.length / 512)} ブロック、セーブ ${ps1Directory(card).length} 件)`);
       break;
     }
     case 'cat': {
