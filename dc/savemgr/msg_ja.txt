@@ -1,0 +1,118 @@
+# 画面の文 (UTF-8)。make で mkmsg.py が Shift-JIS の msg.h にする。「名前 文」の形。printf の %s %d が使える
+TITLE VMU セーブマネージャ
+NO_VMU VMU が挿さっていません
+LOADING 読み込み中…
+READ_ERROR この VMU を読めませんでした (A: もう一度)
+UNFORMATTED フォーマットされていません (Y → 全部消去 で初期化)
+EMPTY ファイルはありません
+FREE_FMT 空き %d
+HELP_MAIN A:ファイル Y:VMU ←→:切替 X:並べ替え START:LAN
+HELP_BACK B:戻る
+HELP_HEX ↑↓:行 L/R:ページ B:戻る
+SORT_0 ディレクトリ順
+SORT_1 名前順
+SORT_2 日付順 (新しい順)
+SORT_3 大きい順
+TYPE_DATA データ
+TYPE_GAME ゲーム
+PROTECTED コピー禁止
+BLOCKS_FMT %d ブロック
+# ファイルのメニュー
+FILE_MENU ファイル
+M_COPY ほかの VMU へコピー
+M_DELETE 削除
+M_INFO 情報
+M_HEX 中身を見る
+# VMU のメニュー
+VMU_MENU VMU %s
+M_WHOLE 丸ごとほかの VMU へ
+M_DEFRAG 整理 (断片化の解消)
+M_CHECK 検査
+M_UNDO 直前の書き込みを取り消す
+M_FORMAT 全部消去 (初期化)
+# 確認・結果
+YESNO A:はい  B:いいえ
+OK_KEY A:OK
+PICK_DEST コピー先の VMU
+NO_DEST ほかに VMU が挿さっていません
+DEST_FMT %s (空き %d)
+COPY_CONFIRM %s の %s を %s へコピーします
+OVERWRITE_CONFIRM %s には同じ名前のファイルがあります。上書きしますか？
+DELETE_CONFIRM %s を削除します
+PROTECTED_NO このファイルはコピー禁止です (本体と同じ扱い)
+WHOLE_CONFIRM %s の内容を %s に丸ごと写します
+WHOLE_CONFIRM2 %s のいまのファイルはすべて消えます
+WHOLE_SKIPPED コピー禁止のファイル %d 個は写しませんでした
+DEFRAG_NONE 断片化したファイルはありません
+DEFRAG_CONFIRM 整理します (%d ブロックを書き換え)
+FORMAT_CONFIRM %s のファイルをすべて消して初期化します
+FORMAT_CONFIRM2 本当に消しますか？ 元に戻すには「取り消し」を使います
+UNDO_CONFIRM %s を直前の書き込みの前に戻します
+WRITING 書き込み中… VMU を抜かないでください
+WRITE_PROGRESS %d / %d ブロック
+DONE 完了しました
+NOTHING_TO_WRITE 変わったところはありません
+CHECK_OK 問題はありません
+CHECK_TITLE 検査の結果 (%s)
+CHECK_FRAG 断片化したファイル: %d 個
+# 情報の画面
+I_NAME ファイル名
+I_TYPE 種類
+I_PROTECT コピー禁止
+I_SIZE 大きさ
+I_FIRST 先頭ブロック
+I_DATE 日付
+I_DESC 説明 (VMU)
+I_LDESC 説明 (本体)
+I_APPID アプリ ID
+I_ICONS アイコン
+I_CRC CRC
+I_FRAG 断片化
+YES はい
+NO いいえ
+CRC_OK 正しい
+CRC_BAD 合っていない
+CRC_NONE ヘッダなし
+ICONS_FMT %d 枚
+# 検査の問題
+P_NOT_FORMATTED フォーマットの印がありません
+P_ROOT_POS ルートの位置が %d です (255 が正しい)
+P_DUP %s: 同じ名前のファイルが複数あります
+P_SIZE %s: 大きさが合いません (ディレクトリ %d / FAT %d)
+P_SHARED %s: ブロック %d をほかのファイルと共有しています
+P_CHAIN %s: FAT のつながりが壊れています
+# エラー
+E_NOT_FORMATTED フォーマットされていません
+E_BAD_NAME ファイル名が正しくありません
+E_EXISTS 同じ名前のファイルがあります
+E_GAME_EXISTS ゲームは 1 つの VMU に 1 つしか置けません
+E_NO_GAME_SPACE ゲーム用の空き (ブロック 0 から連続) がありません。整理すると空くことがあります
+E_NO_SPACE 空きが足りません
+E_DIR_FULL ファイルの数がいっぱいです
+E_BROKEN ファイルが壊れています (FAT のつながり)
+E_CHECK_FAILED VMU に問題があるので中止しました (検査で確認できます)
+E_NO_VMU VMU が挿さっていません
+E_READ VMU を読めませんでした
+E_WRITE 書き込みに失敗しました (VMU を挿し直して確認してください)
+E_REPLACED VMU が差し替えられたので中止しました
+E_OTHER エラー (%d)
+# ネットワーク (BBA)
+LAN_UP LAN %s
+LAN_STARTING LAN 準備中…
+LAN_NONE LAN なし
+LAN_ERROR LAN エラー
+NET_TITLE ネットワーク (BBA)
+N_STATE 状態
+N_IP IP アドレス
+N_MAC MAC
+N_URL ブラウザで
+N_DCLOAD dcload
+N_REQ 受けた要求
+N_LAST 最後の要求
+N_VER 版
+N_PC PC から: node cli.js dc info
+N_READONLY この版は読むだけです (PC へのコピー)
+S_UP つながっています
+S_STARTING 準備中…
+S_NONE BBA が見つかりません
+S_ERROR エラー (ポート 80 を開けません)

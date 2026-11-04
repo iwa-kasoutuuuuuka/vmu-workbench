@@ -83,6 +83,7 @@ AI エージェントからは、このフォルダで Claude Code を開くと 
 - [エミュレーターでの動作検証](#エミュレーターでの動作検証)
 - [VMU ミニゲーム エミュレーター](#vmu-ミニゲーム-エミュレーター)
 - [実機 VMU との転送](#実機-vmu-との転送)
+- [Dreamcast 本体のセーブマネージャ](#dreamcast-本体のセーブマネージャ-dcsavemgr作成中)
 - [VMU フォーマット](#vmu-フォーマット)
 - [ディレクトリ構成](#ディレクトリ構成)
 - [今後の予定](#今後の予定)
@@ -681,6 +682,63 @@ npm run verify:transfer                                  # Flycast で自動検�
 データ) を A1 に書き戻す」を自動実行させ、どちらもバイト単位で一致するかを確かめます (2026-10-17 PASS)。
 **実機での動作は未確認です** (dcload での /pc 取り出しは Flycast では試せません)。大事なセーブは先に別の VMU にコピーしてから使ってください。
 
+## Dreamcast 本体のセーブマネージャ (dc/savemgr、作成中)
+
+Dreamcast 本体で動く VMU 管理ソフトです。仕様は [docs/dc-savemgr-spec.md](docs/dc-savemgr-spec.md)。
+いまは **本体だけで使う機能** (段階 1・2) と、**BBA で PC へ読み出す機能** (段階 3、読むだけ) までできています。
+PC からの書き込み・編集して戻す・Dreamcast から PC へ送る は次の段階です。
+
+| 操作 | 内容 |
+|---|---|
+| ←→ | A1〜D2 の VMU を切り替える (上の札に空きブロック数) |
+| ↑↓ / L・R | ファイルを選ぶ / 1 ページ分動く |
+| A | ファイルのメニュー: ほかの VMU へコピー・削除・情報・中身を見る (16 進、読むだけ) |
+| Y | VMU のメニュー: 丸ごとほかの VMU へ・整理 (断片化の解消)・検査・直前の書き込みを取り消す・全部消去 (初期化) |
+| X | 並べ替え (ディレクトリ順・名前順・日付順・大きい順) |
+| START | ネットワークの様子 (IP・MAC・受けた要求の数・最後の要求) |
+
+**BBA (段階 3、読むだけ)**：起動すると BBA を 192.168.10.2 (直結ケーブル、PC は 192.168.10.1) で使えるようにし、
+ポート 80 で HTTP を受けます (DHCP は待たない。dcload-ip から起動したときは dcload の IP のまま、dcload のコンソールも引き継ぐ)。
+IP は `make NET_IP=192.168.1.50` で変えられます。BBA が無ければ右上に「LAN なし」と出て、本体だけで使えます。
+
+- ブラウザで `http://192.168.10.2/` を開くと、VMU ごとの一覧 (アイコン・説明・日付) と、丸ごと (.bin) / 1 ファイル (.dci / .vms) の保存リンク
+- PC のコマンド (`--host` か環境変数 `DC_HOST` で IP を変えられる):
+
+```bash
+node cli.js dc info                          # つながるか・各スロットの空きとファイル数
+node cli.js dc list a1                       # ファイル一覧 (説明は Shift-JIS を読んで表示)
+node cli.js dc pull a1 a1.bin                # VMU を丸ごと
+node cli.js dc pull a1 SONICADV_INT save.dci # 1 ファイル (.dci 以外の名前なら .vms の中身)
+node cli.js dc backup                        # 挿さっている VMU を全部 dc-backup/<VMU の識別名>/<日時>_<スロット>.bin へ (前回と同じなら保存しない)
+```
+
+- API (`/api/info`、`/api/vmu/{a1〜d2}`、`/image`、`/file/{名前}?fmt=raw|dci`、`/check`) は仕様書の 6 章。
+  答えには ETag (イメージの CRC32) を付けます (次の段階の書き込みで、VMU の差し替えを見分けるのに使う)。
+- HTTP の処理 (`dc/savemgr/httpd.c`) は KallistiOS に依存しないので、`test/savemgr-http.test.js` が PC 用にビルドして
+  (ファイルを VMU として見せる `host/http_host.c`)、答えが vmu.js と同じか、`dcclient.js` と `node cli.js dc ...` で読めるかを確かめます。
+- **Flycast では試せません** (Flycast の BBA は PC からの接続を一部の市販ゲームのポートにしか通さない)。実機での確認が必要です。
+
+- コピー禁止のファイルは本体と同じく VMU どうしではコピーしません (丸ごとコピーでも除きます)。
+- VMU は 256 ブロックを丸ごと RAM に読み、RAM 上で変えてから **変わったブロックだけ** を データ → FAT → ディレクトリ → ルート の順に書き、
+  1 ブロックずつ読み直して確かめます。書く直前にルートブロックを読み直し、VMU が差し替えられていたら中止します。
+  書く前のイメージを 1 回分残すので「取り消し」で戻せます。
+- VMU の処理 (`dc/savemgr/vmucore.c`) は KallistiOS に依存しない C で、`src/vmu.js` と同じ結果になるように書いてあります。
+  `npm test` の `test/vmucore.test.js` が PC 用にビルドして、ランダムな操作列 (書き込み・上書き・ミニゲーム・削除・整理・並べ替え・DCI)
+  と壊れたイメージ (FAT・ディレクトリ・ルートを壊したもの) で vmu.js と 128KB がバイト単位で一致するかを比べます
+  (C コンパイラが無ければ飛ばす。`VMUCORE_SEEDS=1500` で多めに試せる。2026-11-03 に 1500 通りずつ一致)。
+- 画面の文は `dc/savemgr/msg_ja.txt` (UTF-8)。ビルド時に `mkmsg.py` が Shift-JIS の `msg.h` にします。
+
+```bash
+npm run build:savemgr      # dc/savemgr/savemgr.cdi (GDEMU などで起動) と savemgr.elf (dcload-ip で送る)
+npm run verify:savemgr     # Flycast で自動確認
+```
+
+`verify:savemgr` は A1 = テスト用イメージ (コピー禁止・断片化・アイコン 3 枚・CRC 不一致のファイルとミニゲーム)、A2 = 別の中身、
+B1 = 空の VMU で起動し、丸ごとコピー → 削除 → コピー (コピー禁止は断る) → 整理 → 取り消し → 初期化 → 取り消し → 削除 → 検査 を自動で行い、
+A1・A2 が同じ操作を vmu.js でしたときとバイト単位で一致するかを確かめます。結果の記録は B1 の `SMGRLOG`、画面は 1 秒ごとに
+`.emu/out/savemgr/shot_NN.png` (2026-11-03 PASS)。命令入りの ROM は誤って実機で使わないよう `savemgr_test.cdi` という別の名前で作ります。
+**実機ではまだ動かしていません。** 試すときは捨ててよい VMU で、先に丸ごとバックアップを取ってください。
+
 ## VMU フォーマット
 
 128KB = 512 バイト × 256 ブロック。
@@ -776,6 +834,14 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 ## 更新履歴
 
 - **2026-11-04** README: Antigravity の MCP 設定の場所を修正 (`~/.gemini/config/mcp_config.json`。`~/.gemini/antigravity/` は読まれない)
+- **2026-11-03** セーブマネージャ 段階 3 (BBA で PC へ読み出す。PC 上のテストのみ、実機は未確認)
+  - Dreamcast: BBA を固定 IP (DHCP なし) で準備、ポート 80 の HTTP サーバ (別スレッド)、簡易 Web ページ、START でネットワークの様子
+  - PC: `src/dcclient.js`、`node cli.js dc info / list / pull / backup`、`test/savemgr-http.test.js`
+- **2026-11-03** Dreamcast 本体のセーブマネージャ `dc/savemgr` (段階 1・2、Flycast で確認、実機は未確認)
+  - 仕様 `docs/dc-savemgr-spec.md` (「決めること」は推奨案で確定)
+  - `vmucore.c`：VMU の処理を C で (vmu.js と同じ結果)。`test/vmucore.test.js` で PC 上で比べる
+  - 本体の画面: 一覧 (アイコン・説明・ブロック数・日付)、コピー・削除・情報・16 進表示、丸ごとコピー・整理・検査・取り消し・初期化
+  - `npm run build:savemgr` / `npm run verify:savemgr` (Flycast での自動確認)、`scripts/capture-window.ps1` (Flycast の画面を前面に出さずに撮る)
 - **2026-11-03** PS1 メモリーカード (.mcr) の出し入れと、転送 ROM の PC からの自動操作
   - CLI `ps1-list` / `ps1-export` / `ps1-import`：bleem2 の `BLEEMMC` (RLE 圧縮した PS1 カード) と 128KB の生イメージ
     (.mcr / .mcd、読み込みは DexDrive の .gme も) の変換。MemcardRex などの PS1 用ツールで編集したカードを戻せる。

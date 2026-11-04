@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VMU セーブマネージャ</title>
+<style>
+  :root { --bg: #f6f7fb; --fg: #1d2333; --dim: #6a7389; --line: #d8dce8; --card: #fff; --accent: #3558b8; --warn: #a86400; --bad: #b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #121722; --fg: #e8ebf3; --dim: #98a1b8; --line: #2c3447; --card: #1a2131; --accent: #8aa8ff; --warn: #f0b75a; --bad: #ff8a80; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  header { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; }
+  .dim { color: var(--dim); }
+  main { padding: 12px 16px; max-width: 960px; margin: 0 auto; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tabs button { font: inherit; padding: 6px 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 6px; cursor: pointer; min-width: 64px; }
+  .tabs button[aria-selected="true"] { border-color: var(--accent); outline: 2px solid var(--accent); }
+  .tabs button:disabled { opacity: .45; cursor: default; }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  a.btn { color: var(--accent); text-decoration: none; border: 1px solid var(--line); padding: 3px 8px; border-radius: 5px; background: var(--card); white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-weight: 600; font-size: 13px; color: var(--dim); white-space: nowrap; }
+  td.dl, td.date { white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  canvas { width: 32px; height: 32px; image-rendering: pixelated; display: block; }
+  .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .wrap { overflow-x: auto; }
+  .note { margin-top: 12px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>VMU セーブマネージャ</h1>
+  <span class="dim" id="status">接続中…</span>
+</header>
+<main>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="bar" id="bar"></div>
+  <div class="wrap"><table id="list" hidden>
+    <thead><tr><th></th><th>説明</th><th>ファイル名</th><th>種類</th><th class="num">ブロック</th><th>日付</th><th>保存</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="note dim">この版は読むだけです (PC へのコピー)。書き込みは次の版で、Dreamcast 側で A を押して許可する形になります。</p>
+</main>
+<script>
+const sjis = new TextDecoder('shift_jis');
+const fromHex = (h) => sjis.decode(Uint8Array.from((h || '').match(/../g) || [], (x) => parseInt(x, 16)));
+const $ = (id) => document.getElementById(id);
+let info = null, cur = null;
+
+async function getJson(url) {
+  const r = await fetch(url, { cache: 'no-store' });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+
+function drawIcon(canvas, file, headerAt) {
+  const v = new DataView(file.buffer);
+  if (file.length < headerAt + 0x80 + 512) return;
+  const pal = Array.from({ length: 16 }, (_, i) => v.getUint16(headerAt + 0x60 + i * 2, true));
+  const ctx = canvas.getContext('2d');
+  const im = ctx.createImageData(32, 32);
+  for (let i = 0; i < 1024; i++) {
+    const b = file[headerAt + 0x80 + (i >> 1)];
+    const c = pal[i & 1 ? b & 15 : b >> 4];
+    im.data.set([((c >> 8) & 15) * 17, ((c >> 4) & 15) * 17, (c & 15) * 17, ((c >> 12) & 15) * 17], i * 4);
+  }
+  ctx.putImageData(im, 0, 0);
+}
+
+function renderTabs() {
+  const tabs = $('tabs');
+  tabs.textContent = '';
+  for (const s of info.slots) {
+    const b = document.createElement('button');
+    b.role = 'tab';
+    b.setAttribute('aria-selected', s.slot === cur);
+    b.disabled = !s.present;
+    b.textContent = `${s.slot.toUpperCase()} ${!s.present ? '—' : !s.readable ? '読めない' : !s.formatted ? '未フォーマット' : `空き ${s.free}`}`;
+    b.onclick = () => { cur = s.slot; renderTabs(); showSlot(); };
+    tabs.append(b);
+  }
+}
+
+async function showSlot() {
+  const bar = $('bar'), table = $('list'), tbody = table.querySelector('tbody');
+  bar.textContent = '';
+  tbody.textContent = '';
+  table.hidden = true;
+  if (!cur) { bar.textContent = 'VMU が挿さっていません'; return; }
+  const all = document.createElement('a');
+  all.className = 'btn';
+  all.href = `/api/vmu/${cur}/image`;
+  all.textContent = `${cur.toUpperCase()} を丸ごと保存 (.bin 128KB)`;
+  bar.append(all);
+  let list;
+  try { list = await getJson(`/api/vmu/${cur}`); } catch (e) { bar.append(` 読めませんでした: ${e.message}`); return; }
+  if (!list.formatted) { bar.append(' フォーマットされていません'); return; }
+  for (const f of list.files) {
+    const tr = document.createElement('tr');
+    const iconTd = document.createElement('td');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 32;
+    iconTd.append(canvas);
+    const desc = f.header ? `${fromHex(f.descHex)}  ${fromHex(f.longDescHex)}`.trim() : '(ヘッダなし)';
+    const cells = [desc, f.name, (f.type === 'game' ? 'ゲーム' : 'データ') + (f.protected ? ' / コピー禁止' : ''),
+      f.blocks, (f.date || '').replace('T', ' ')];
+    tr.append(iconTd);
+    cells.forEach((c, i) => {
+      const td = document.createElement('td');
+      td.textContent = c;
+      if (i === 3) td.className = 'num';
+      if (i === 4) td.className = 'date';
+      if (i === 0 && f.crc === 'bad') { td.className = 'warn'; td.title = 'CRC が合っていません'; }
+      if (!f.readable) td.className = 'bad';
+      tr.append(td);
+    });
+    const dl = document.createElement('td');
+    dl.className = 'dl';
+    const name = encodeURIComponent(f.name);
+    for (const [fmt, label] of [['dci', '.dci'], ['raw', '.vms']]) {
+      const a = document.createElement('a');
+      a.className = 'btn';
+      a.href = `/api/vmu/${cur}/file/${name}?fmt=${fmt}`;
+      a.textContent = label;
+      dl.append(a, ' ');
+    }
+    tr.append(dl);
+    tbody.append(tr);
+    if (f.header && f.readable) {
+      fetch(`/api/vmu/${cur}/file/${name}?fmt=raw`).then((r) => r.arrayBuffer())
+        .then((b) => drawIcon(canvas, new Uint8Array(b), f.type === 'game' ? f.headerOffset * 512 : 0)).catch(() => {});
+    }
+  }
+  table.hidden = false;
+}
+
+async function start() {
+  try {
+    info = await getJson('/api/info');
+  } catch (e) {
+    $('status').textContent = `つながりません: ${e.message}`;
+    return;
+  }
+  $('status').textContent = `${info.ip || ''}  v${info.version}${info.dcload ? '  (dcload)' : ''}`;
+  if (!cur || !info.slots.find((s) => s.slot === cur && s.present)) cur = info.slots.find((s) => s.present)?.slot ?? null;
+  renderTabs();
+  showSlot();
+}
+start();
+</script>
+</body>
+</html>

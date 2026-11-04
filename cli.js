@@ -77,7 +77,15 @@ usage:
   node cli.js fields  <vmu.bin> <名前>          名前付きフィールドの値を表示
   node cli.js set     <vmu.bin> <名前> <フィールド>=<値> ... [--no-crc]
                                                 値を書き込み (例: set v.bin SAVE 所持金=99999 "アイテム[0]=3")
-                                                定義のチェックサムも自動更新 (--no-checksum で無効)`;
+                                                定義のチェックサムも自動更新 (--no-checksum で無効)
+
+  Dreamcast 本体のセーブマネージャ (dc/savemgr) と BBA で (--host <IP>、既定 192.168.10.2 か環境変数 DC_HOST):
+  node cli.js dc info                           つながるか確かめ、各スロットの VMU (空き・ファイル数) を表示
+  node cli.js dc list   <スロット>              ファイル一覧 (スロットは a1〜d2)
+  node cli.js dc pull   <スロット> <out.bin>    VMU を丸ごと PC へ (128KB。.dcm なら DCM 形式)
+  node cli.js dc pull   <スロット> <名前> <out> 1 ファイルを PC へ (.dci なら DCI、それ以外は .vms の中身)
+  node cli.js dc backup [フォルダ]              挿さっている VMU を全部保管庫へ (既定 dc-backup/<VMU の識別名>/)
+                                                前回と同じ中身なら保存しない`;
 
 const argv = process.argv.slice(2);
 const takeFlag = (flag, withValue = false) => {
@@ -107,6 +115,7 @@ const clockArg = takeFlag('--clock', true);
 const resumePath = takeFlag('--resume', true);
 const suspendPath = takeFlag('--suspend', true);
 const wavOut = takeFlag('--wav', true);
+const dcHost = takeFlag('--host', true);
 const [cmd, imagePath, ...args] = argv;
 
 /** 使う構造定義を決める (--def 指定 > defs/ から自動一致) */
@@ -625,6 +634,11 @@ try {
         console.log(`0x${d.offset.toString(16).padStart(4, '0')}: ${hex(d.before.subarray(0, 32))} -> ${hex(d.after.subarray(0, 32))}${more}${names.length ? `  [${names.join(', ')}]` : ''}`);
       }
       console.log(ranges.length ? `${ranges.length}箇所の差分` : '差分なし');
+      break;
+    }
+    case 'dc': {
+      const { runDc } = await import('./src/dc-cli.js');
+      await runDc(imagePath, args, { host: dcHost || process.env.DC_HOST });
       break;
     }
     default:

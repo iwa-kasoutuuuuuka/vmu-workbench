@@ -12,6 +12,8 @@
     "verify:emu": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/emu_verify.ps1",
     "emu:manual": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/emu_verify.ps1 -Manual",
     "build:transfer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vmu_transfer.ps1",
-    "verify:transfer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vmu_transfer.ps1 -Test"
+    "verify:transfer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/vmu_transfer.ps1 -Test",
+    "build:savemgr": "C:/DreamSDK/usr/bin/bash.exe --login -c \"/h/DC/tools/vmu-workbench/dc/savemgr/build.sh cdi\"",
+    "verify:savemgr": "node scripts/savemgr-test.js"
   }
 }
