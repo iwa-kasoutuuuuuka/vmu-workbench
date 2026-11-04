@@ -485,9 +485,11 @@ AI エージェントがツールを呼び出して、セーブの観察 → 差
 ### Antigravity
 
 skill は `.agent/skills/vmu-save-analysis/` (D:\DC と同じ形式) にあり、ワークスペースとして `D:\DC_VMU` を開くと使えます。
-MCP サーバーはユーザー設定 `~/.gemini/antigravity/mcp_config.json` の `mcpServers` に、
-[mcp/antigravity.mcp.json](mcp/antigravity.mcp.json) の `dc-vmu` の項目を追加して登録します (既存の項目は残す)。
-この PC では 2026-10-17 に登録済み (変更前の設定は `mcp_config.json.bak_dcvmu` に保存)。反映には Antigravity の再起動が必要です。
+MCP サーバーは Antigravity の全体設定 `~/.gemini/config/mcp_config.json` (古い Antigravity IDE は
+`~/.gemini/antigravity-ide/mcp_config.json`) の `mcpServers` に、[mcp/antigravity.mcp.json](mcp/antigravity.mcp.json) の
+`dc-vmu` の項目を追加して登録します (既存の項目は残す。パスは clone した場所に書き換える)。反映には Antigravity の再起動が必要です。
+`~/.gemini/antigravity/mcp_config.json` は読まれません (2026-11 の Antigravity で確認)。
+登録できると、Antigravity はツールの一覧を `~/.gemini/antigravity/mcp/dc-vmu/` に書き出します。
 
 ```json
 "dc-vmu": { "command": "C:/nvm4w/nodejs/node.exe", "args": ["D:/DC_VMU/mcp/server.js"] }
@@ -773,6 +775,7 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 
 ## 更新履歴
 
+- **2026-11-04** README: Antigravity の MCP 設定の場所を修正 (`~/.gemini/config/mcp_config.json`。`~/.gemini/antigravity/` は読まれない)
 - **2026-11-03** PS1 メモリーカード (.mcr) の出し入れと、転送 ROM の PC からの自動操作
   - CLI `ps1-list` / `ps1-export` / `ps1-import`：bleem2 の `BLEEMMC` (RLE 圧縮した PS1 カード) と 128KB の生イメージ
     (.mcr / .mcd、読み込みは DexDrive の .gme も) の変換。MemcardRex などの PS1 用ツールで編集したカードを戻せる。
