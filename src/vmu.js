@@ -40,6 +40,8 @@ export function decodeTimestamp(bytes) {
     return null;
   }
   if (!bytes.subarray(2, 7).every(isBcd)) return null;
+  const [mo, dd, hh, mi, ss] = [...bytes.subarray(2, 7)].map(fromBcd);
+  if (mo < 1 || mo > 12 || dd < 1 || dd > 31 || hh > 23 || mi > 59 || ss > 59) return null;
   const d = new Date(2000, 0, 1, fromBcd(bytes[4]), fromBcd(bytes[5]), fromBcd(bytes[6]));
   d.setFullYear(year, fromBcd(bytes[2]) - 1, fromBcd(bytes[3])); // new Date(y<100) は 1900 年代になるため
   return d;
@@ -115,7 +117,15 @@ export class Vmu {
   // ---- FAT ----
 
   fatOffset(block) {
-    return this.root.fatBlock * BLOCK_SIZE + block * 2;
+    const { fatBlock } = this.root;
+    if (fatBlock >= BLOCK_COUNT) throw new VmuError(`ルートブロックの FAT の位置 (0x46) が ${fatBlock} です (255 以下のはず。イメージが壊れています)`);
+    return fatBlock * BLOCK_SIZE + block * 2;
+  }
+
+  /** FAT・ディレクトリ・ルートのブロックか (ファイルのチェーンが入ってはいけない) */
+  isSystemBlock(b) {
+    const { fatBlock, fatSize, dirBlock, dirSize } = this.root;
+    return b === ROOT_BLOCK || (b <= fatBlock && b > fatBlock - Math.max(fatSize, 1)) || (b <= dirBlock && b > dirBlock - dirSize);
   }
 
   getFat(block) {
@@ -134,6 +144,9 @@ export class Vmu {
     while (b !== FAT_END) {
       if (b >= BLOCK_COUNT || seen.has(b) || blocks.length >= maxBlocks) {
         throw new VmuError(`FATチェーンが壊れています (ブロック ${b})`);
+      }
+      if (this.isSystemBlock(b)) {
+        throw new VmuError(`FATチェーンが FAT・ディレクトリ・ルートのブロック ${b} を指しています (書き換えるとシステム領域が壊れるので止めます)`);
       }
       seen.add(b);
       blocks.push(b);
@@ -155,6 +168,9 @@ export class Vmu {
 
   dirEntryOffsets() {
     const { dirBlock, dirSize } = this.root;
+    if (dirBlock >= BLOCK_COUNT || dirSize > dirBlock + 1) {
+      throw new VmuError(`ルートブロックのディレクトリの位置・大きさ (0x4a=${dirBlock}, 0x4c=${dirSize}) がおかしいです (イメージが壊れています)`);
+    }
     const offsets = [];
     for (let i = 0; i < dirSize; i++) {
       const base = (dirBlock - i) * BLOCK_SIZE;
@@ -398,7 +414,14 @@ export class Vmu {
   reorder(names) {
     const list = this.list();
     for (const n of names) if (!list.some((e) => e.name === n)) throw new VmuError(`ファイルがありません: ${n}`);
-    const ordered = [...names.map((n) => list.find((e) => e.name === n)), ...list.filter((e) => !names.includes(e.name))];
+    const taken = new Set();
+    const ordered = [];
+    for (const n of new Set(names)) {
+      const e = list.find((x) => x.name === n && !taken.has(x.slot));
+      taken.add(e.slot);
+      ordered.push(e);
+    }
+    ordered.push(...list.filter((e) => !taken.has(e.slot))); // 同名の 2 つ目なども消さずに後ろへ
     const offsets = this.dirEntryOffsets();
     for (const off of offsets) this.data.fill(0, off, off + DIR_ENTRY_SIZE);
     ordered.forEach((e, i) => this.data.set(e.raw, offsets[i]));
@@ -419,9 +442,17 @@ export class Vmu {
     else if (this.root.rootBlock !== ROOT_BLOCK) {
       problems.push(`ルートブロックの「ルートの位置」(0x44) が ${this.root.rootBlock} です (255 でないと VMU 本体の BIOS がファイル画面で「システムガ コワレテイマス」と表示。fixroot で直せます)`);
     }
+    let entries;
+    try {
+      entries = this.list();
+      this.getFat(0);
+    } catch (err) {
+      problems.push(err.message);
+      return problems;
+    }
     const owner = new Map();
     const names = new Map();
-    for (const e of this.list()) {
+    for (const e of entries) {
       if (names.has(e.name)) problems.push(`${e.name}: 同名のファイルが複数あります (スロット ${names.get(e.name)} と ${e.slot})`);
       names.set(e.name, e.slot);
       try {
@@ -429,6 +460,8 @@ export class Vmu {
         if (blocks.length !== e.sizeBlocks) {
           problems.push(`${e.name}: サイズ不一致 (ディレクトリ ${e.sizeBlocks}, FAT ${blocks.length})`);
         }
+        const hidden = blocks.filter((b) => b >= this.root.userBlocks);
+        if (hidden.length) problems.push(`${e.name}: ユーザー領域 (0〜${this.root.userBlocks - 1}) の外のブロック ${hidden.join(', ')} を使っています`);
         for (const b of blocks) {
           if (owner.has(b)) problems.push(`${e.name}: ブロック${b}が${owner.get(b)}と重複`);
           owner.set(b, e.name);

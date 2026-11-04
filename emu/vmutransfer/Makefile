@@ -1,6 +1,6 @@
 #
 # vmutransfer — 実機 VMU ⇔ PC のイメージ転送 ROM
-# MSYS2 MinGW64 で: source /d/DC/KallistiOS/environ.sh && make cdi
+# DreamSDK のシェルで: source /h/DC/KallistiOS/environ.sh && make cdi
 # romdisk/ に restore.bin (128KB) を置くと ROM に埋め込む。auto (copy / restore) を置くと起動時に自動実行
 # (通常は scripts/vmu_transfer.ps1 が romdisk/ を用意してビルドする)
 #

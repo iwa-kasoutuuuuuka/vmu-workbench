@@ -122,7 +122,7 @@ test('エージェント向けの設定・手順書', async () => {
   assert.equal(readFileSync(`${ROOT}/.claude/skills/vmu-save-analysis/SKILL.md`, 'utf8'), readFileSync(`${ROOT}/.agent/skills/vmu-save-analysis/SKILL.md`, 'utf8'));
   for (const f of ['.mcp.json', 'mcp/antigravity.mcp.json']) {
     const cfg = JSON.parse(readFileSync(`${ROOT}/${f}`, 'utf8'));
-    // 設定の絶対パスはこの PC 用 (D:/DC_VMU)。どこに clone しても通るよう、mcp/server.js を指していることだけ確かめる
+    // .mcp.json は相対パス、antigravity.mcp.json の例は絶対パス。どちらも mcp/server.js を指していることを確かめる
     const script = cfg.mcpServers['dc-vmu'].args[0].replace(/\\/g, '/');
     assert.match(script, /(^|\/)mcp\/server\.js$/, `${f}: ${script}`);
     assert.ok(existsSync(`${ROOT}/mcp/server.js`));

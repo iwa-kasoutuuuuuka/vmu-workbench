@@ -3,7 +3,7 @@
     "dc-vmu": {
       "type": "stdio",
       "command": "node",
-      "args": ["D:/DC_VMU/mcp/server.js"]
+      "args": ["mcp/server.js"]
     }
   }
 }

@@ -62,13 +62,13 @@ AI エージェントからは、このフォルダで Claude Code を開くと 
 | METAL SLUG X (PS1、bleem2) の改造セーブがゲーム内で反映されるか | 確認済み (ランキング・COMBAT SCHOOL 解放) |
 | GUI (ブラウザ) | 主な操作を確認済み (ミニゲーム実行・.dcm 読み込み・日本語 / English の切り替えを含む) |
 | 実機転送 ROM を実機で使う / dcload で PC へ取り出す | **未確認** (実機が必要) |
-| VMU BIOS での起動とミニゲーム | 確認済み (BIOS jp1.004 で時計設定 → GAME → 起動。`D:\DC\Sega - VMU` の 125 本中、全本がエミュレーターを止めずに起動・表示) |
+| VMU BIOS での起動とミニゲーム | 確認済み (BIOS jp1.004 で時計設定 → GAME → 起動。`H:\DC\Sega - VMU` の 125 本中、全本がエミュレーターを止めずに起動・表示) |
 
 リポジトリ: https://github.com/iwa-kasoutuuuuuka/vmu-workbench (公開)
 
-旧名は DC_VMU です。フォルダ名 (`D:\DC_VMU`)・MCP サーバー名 (`dc-vmu`)・テスト用セーブの識別子 (`DCVMU_*`) は互換のためそのままにしています。
+旧名は DC_VMU です。MCP サーバー名 (`dc-vmu`)・テスト用セーブの識別子 (`DCVMU_*`) は互換のためそのままにしています。
 
-開発環境 (KallistiOS / Flycast / skills) は `D:\DC` のワークスペースを利用しています。
+開発環境 (KallistiOS / Flycast / skills) は `H:\DC` のワークスペースを利用しています。
 
 ---
 
@@ -94,8 +94,8 @@ AI エージェントからは、このフォルダで Claude Code を開くと 
 | 用途 | 必要なもの |
 |---|---|
 | GUI / CLI / テスト | Node.js 18 以上 (確認: v24.13.1)。npm パッケージ依存なし |
-| 検証 ROM のビルド | `D:\DC` の MSYS2 + KallistiOS 環境、`D:\DC\tools\mkdcdisc_bin` |
-| エミュレーター検証 | `D:\DC\flycast-memcard` の Flycast と Dreamcast BIOS |
+| 検証 ROM のビルド | DreamSDK のシェルと `H:\DC\KallistiOS`、`H:\DC\tools\mkdcdisc_bin` (`npm run build:rom`) |
+| エミュレーター検証 | `H:\DC\flycast-memcard` の Flycast と Dreamcast BIOS |
 
 ## GUI の使い方
 
@@ -252,7 +252,7 @@ Dreamcast ソフトのセーブ名の一覧は資料で確認できなかった�
 
 #### METAL SLUG X (PS1) の解析メモ
 
-手元にあった実セーブ 1 件 (`D:\DC\flycast-memcard` の VMU 内 `BLEEMMC`) のダンプから作りました。
+手元にあった実セーブ 1 件 (`H:\DC\flycast-memcard` の VMU 内 `BLEEMMC`) のダンプから作りました。
 
 | 位置 (セーブ先頭から) | 内容 | 確度 |
 |---|---|---|
@@ -317,7 +317,7 @@ BEST 5 の画面では → / ← でステージ (STAGE1〜5) を切り替えら
 **「止まった」ように見えた件 (2026-10-17)**: リリース版・デバッグ版 (HUD/ログ付き) の bleem2 で計 5 回、
 → / ← / ○ / ↓ / × / △ を組み合わせて再現を試みましたが、一度も止まらず、毎回ステージが切り替わりました。
 止まって見えたときもゲームは動いており (点滅が続く、フレーム数が進む)、キーだけが効いていませんでした。
-キー送信に使っていた `D:\DC\bleem2\scripts\send_keys.ps1` は Flycast を前面に出す `SetForegroundWindow` の
+キー送信に使っていた `H:\DC\bleem2\scripts\send_keys.ps1` は Flycast を前面に出す `SetForegroundWindow` の
 成否を確認せずに `keybd_event` を送るため、前面化が拒否されると (他のアプリを操作中など) キーが別のウィンドウに入ります。
 `scripts/send_keys.ps1` (同じ使い方) は前面化を確認し、できなければキーを送らずに終了コード 2 で知らせます。
 `emu_bleem_card.ps1` は既定でこちらを使います。
@@ -327,7 +327,7 @@ BEST 5 の画面では → / ← でステージ (STAGE1〜5) を切り替えら
 #### 手で遊んで調べる (自動プレイ無しのビルド)
 
 `bleem2-memcard` の CDI は自動プレイ (決まったフレームでボタンを押す) 入りなので、メニュー操作が必要な画面は確認できません。
-D:\DC を変えずに、自動プレイを外したビルドを `.emu/` に作れます:
+H:\DC を変えずに、自動プレイを外したビルドを `.emu/` に作れます:
 
 ```bash
 bash scripts/build-bleem2-noauto.sh
@@ -345,7 +345,7 @@ node cli.js diff my.bin after.bin BLEEMMC
 手順:
 
 ```powershell
-Copy-Item D:\DC\flycast-memcard\data\vmu_save_A1.bin my.bin
+Copy-Item H:\DC\flycast-memcard\data\vmu_save_A1.bin my.bin
 node cli.js fields my.bin BLEEMMC
 node cli.js set my.bin BLEEMMC "ランキング 名前[0]=DCV" "ランキング スコア[0]=1234560"
 powershell -ExecutionPolicy Bypass -File scripts/emu_bleem_card.ps1 -Image my.bin -Tag modded -Seconds 52
@@ -360,7 +360,7 @@ powershell -ExecutionPolicy Bypass -File scripts/emu_bleem_card.ps1 -Image my.bi
 bleem2 の自動プレイ (カード有効ビルド) の流れ: f≈900 カード読み込み → f≈1800 タイトルで Start → ミッション 1 →
 f≈6600 CONTINUE → f≈7200 GAME OVER (自動プレイのスコアは 10 位未満なので名前入力は無し) → ロゴ → f≈10100〜 デモプレイ →
 **f≈12000 ランキング画面** → ロゴ → タイトル → f≈14800〜 次のデモ。
-bleem2 のメモリーカード有効ビルド (`D:\DC\bleem2-memcard\build\bleem2.cdi`) を使います (D:\DC 側は読むだけ)。
+bleem2 のメモリーカード有効ビルド (`H:\DC\bleem2-memcard\build\bleem2.cdi`) を使います (H:\DC 側は読むだけ)。
 
 ## CLI の使い方
 
@@ -478,13 +478,13 @@ AI エージェントがツールを呼び出して、セーブの観察 → 差
 
 ### Claude Code
 
-プロジェクト直下の `.mcp.json` に登録済みです (パスはこの PC の `D:/DC_VMU/mcp/server.js`。別の場所に clone したら書き換えてください)。`D:\DC_VMU` で Claude Code を開くと、初回にサーバー `dc-vmu` の
+プロジェクト直下の `.mcp.json` に登録済みです (`mcp/server.js` を相対パスで書いているので、どこに clone してもそのまま使えます)。このフォルダで Claude Code を開くと、初回にサーバー `dc-vmu` の
 利用許可を求められるので許可してください。skill は `.claude/skills/vmu-save-analysis/`。
 「BLEEMMC のセーブを解析して」「スコアの位置を探して」などと頼むと、ツールと skill を使って進めます。
 
 ### Antigravity
 
-skill は `.agent/skills/vmu-save-analysis/` (D:\DC と同じ形式) にあり、ワークスペースとして `D:\DC_VMU` を開くと使えます。
+skill は `.agent/skills/vmu-save-analysis/` (H:\DC と同じ形式) にあり、ワークスペースとしてこのフォルダを開くと使えます。
 MCP サーバーは Antigravity の全体設定 `~/.gemini/config/mcp_config.json` (古い Antigravity IDE は
 `~/.gemini/antigravity-ide/mcp_config.json`) の `mcpServers` に、[mcp/antigravity.mcp.json](mcp/antigravity.mcp.json) の
 `dc-vmu` の項目を追加して登録します (既存の項目は残す。パスは clone した場所に書き換える)。反映には Antigravity の再起動が必要です。
@@ -492,7 +492,7 @@ MCP サーバーは Antigravity の全体設定 `~/.gemini/config/mcp_config.jso
 登録できると、Antigravity はツールの一覧を `~/.gemini/antigravity/mcp/dc-vmu/` に書き出します。
 
 ```json
-"dc-vmu": { "command": "C:/nvm4w/nodejs/node.exe", "args": ["D:/DC_VMU/mcp/server.js"] }
+"dc-vmu": { "command": "node", "args": ["H:/DC/tools/vmu-workbench/mcp/server.js"] }
 ```
 
 skill を変えるときは `.claude/` と `.agent/` の両方を同じ内容にしてください (`npm test` で一致を確認しています)。
@@ -525,7 +525,7 @@ VMU Workbench (Node)                  Flycast (Dreamcast)
 コピー禁止ファイル、改造して CRC を更新したセーブ (`DCVMU_PATCH` → OK になるべき)、
 構造定義で名前付きフィールドを書き換えたセーブ (`DCVMU_STRUCT` → OK になるべき)、
 改造して CRC を更新しなかった対照 (`DCVMU_BADCRC` → NG になるべき)、
-`D:\DC\flycast-memcard` の実 VMU から取り込んだファイルが入ります。
+`H:\DC\flycast-memcard` の実 VMU から取り込んだファイルが入ります。
 
 ### 手順
 
@@ -550,8 +550,8 @@ VMU Workbench (Node)                  Flycast (Dreamcast)
 
 ### 補足
 
-- Flycast と BIOS は初回実行時に `D:\DC\flycast-memcard` から `.emu/` にコピーされ、
-  `D:\DC` 側の VMU やセーブには一切触れません (`-FlycastSrc` で元フォルダを変更可)。
+- Flycast と BIOS は初回実行時に `H:\DC\flycast-memcard` から `.emu/` にコピーされ、
+  `H:\DC` 側の VMU やセーブには一切触れません (`-FlycastSrc` で元フォルダを変更可)。
 - `.emu/` には BIOS が含まれるため `.gitignore` 済みです。**BIOS は再配布しないでください。**
 - 結果ファイル: `.emu/out/before.bin` (投入イメージ) / `.emu/out/after.bin` (実行後) / `.emu/flycast.log`
 - KOS 2.3 の `fs_readdir` は `.` `..` も返すため、ROM 側で除外しています。
@@ -583,10 +583,10 @@ MAME の lc8670 (BSD-3) の挙動に合わせました。
 - **BIOS について**: VMU の BIOS は同梱していません (著作物なので配布しない)。64KB の生のダンプを GUI / CLI (`--bios`) / MCP で
   指定すると、実機と同じく BIOS から起動します (時計の設定 → MODE で FILE / GAME / CLOCK → GAME で A を押すとミニゲーム起動)。
   ゲームが BIOS を呼ぶ処理 (時計の更新・終了で BIOS に戻るなど) も本物の BIOS が動きます。
-  確認に使ったのは `D:\DC\Sega - VMU\vmu_bios_jp.bin` (Version 1.004 1998/09/30、SHA1 `dc2fa296…` = MAME の jp1004 と同じ)。
+  確認に使ったのは `H:\DC\Sega - VMU\vmu_bios_jp.bin` (Version 1.004 1998/09/30、SHA1 `dc2fa296…` = MAME の jp1004 と同じ)。
   ローカルでは `.emu/vmu/vmu_bios_jp.bin` にコピーして使っています (`.emu/` はコミットしない)。
   BIOS 無しでは BIOS が行う初期化を真似てゲームを直接起動し、ゲームが BIOS を呼んだ時点で「BIOS が必要」と表示して止まります。
-  なお Flycast 用の BIOS ファイル (`D:\DC\flycast-memcard\data`、先頭 1 バイトが `0xE6`、65540 バイト) は難読化されていて使えません
+  なお Flycast 用の BIOS ファイル (`H:\DC\flycast-memcard\data`、先頭 1 バイトが `0xE6`、65540 バイト) は難読化されていて使えません
 - 電池: P7 の bit1 を「電池の電圧が十分」として返します (MAME の svmu と同じ)。これが 0 だと BIOS は「デンチヲ コウカン シテクダサイ」と表示します
 - 時間: 命令ごとに「サイクル数 ÷ その時のクロック」で経過秒を積み上げます (BIOS が途中で RC 発振 ⇔ サブクロックを切り替えるため)
 - 実行速度はクロック設定 (OCR) に従います (サブクロック 32768Hz ÷ 6 = 5461 命令サイクル/秒 など)
@@ -626,8 +626,8 @@ BIOS について分かったこと (資料が無いため、エミュレータ�
 
 ### 収録ミニゲームでの確認 (2026-10-17、BIOS jp1.004)
 
-`D:\DC\Sega - VMU` の .vms 126 本 (うち 1 本はデータ) を 1 本ずつ空の VMU に書き込み、BIOS で時計設定 → GAME → 起動 →
-数秒ごとに A を押して画面を記録しました (読むだけで、`D:\DC` 側は変更していません)。
+`H:\DC\Sega - VMU` の .vms 126 本 (うち 1 本はデータ) を 1 本ずつ空の VMU に書き込み、BIOS で時計設定 → GAME → 起動 →
+数秒ごとに A を押して画面を記録しました (読むだけで、`H:\DC` 側は変更していません)。
 
 - 125 本すべてがエミュレーターのエラー (未定義命令など) 無しで起動し、タイトル画面・ゲーム画面・GAME OVER などを表示
   (Tiny Tetris はブロックが落ち、十字キーで動くところまで確認。Chao Adventure 2、Power Stone、Soul Calibur、Pop'n Music、
@@ -659,7 +659,7 @@ KallistiOS の ROM `emu/vmutransfer` で、実機の VMU 全体 (128KB、ブロ�
 |---|---|
 | A | A1 の VMU → PC の `/pc/vmu_dump.bin` (dcload-ip / dcload-serial で起動したときだけ) |
 | X | A1 の VMU → A2 の VMU に丸ごとコピー |
-| Y → START | イメージを A1 に書き戻す (`/pc/vmu_restore.bin`、無ければ ROM に埋め込んだイメージ)。B で取り消し |
+| Y → START | イメージを A1 に書き戻す (`/pc/vmu_restore.bin`、無ければ ROM に埋め込んだイメージ)。B で取り消し。PC のファイルが 128KB でない・読めないときは ROM のイメージに切り替えずに止まる |
 
 書き込みはブロックごとに読み返して確認し (3 回まで再試行)、フォーマット情報のあるルートブロック (255) を最後に書きます。
 
@@ -680,7 +680,8 @@ npm run verify:transfer                                  # Flycast で自動検�
 
 `verify:transfer` は A1 = テスト用イメージ、A2 = 空の VMU で起動し、「A1 → A2 のコピー」と「埋め込んだイメージ (デモのミニゲーム +
 データ) を A1 に書き戻す」を自動実行させ、どちらもバイト単位で一致するかを確かめます (2026-10-17 PASS)。
-**実機での動作は未確認です** (dcload での /pc 取り出しは Flycast では試せません)。大事なセーブは先に別の VMU にコピーしてから使ってください。
+dcload-ip (BBA) での吸い出し・書き戻しは実機で確認済みです (2026-11-03・04、dc-bba-tools の `dc_vmu.ps1`)。大事なセーブは先に別の VMU にもコピーしておいてください。
+`verify:transfer` が作るテスト用の ROM は起動するとすぐに A1・A2 を書き換えるので、`.emu/out/transfer/vmutransfer_test.cdi` に置き、`emu/vmutransfer` には残しません。dcload で動かしたときは ROM 内の自動実行 (`/rd/auto`) を使いません。
 
 ## VMU フォーマット
 
@@ -710,7 +711,7 @@ VMI: 108 バイト。チェックサム (リソース名の先頭 4 バイト AN
 ## ディレクトリ構成
 
 ```
-D:\DC_VMU
+vmu-workbench/
 ├── src/
 │   ├── vmu.js        # VMU イメージ (ルート/FAT/ディレクトリ/ファイル操作/整合性チェック)
 │   ├── vms.js        # VMS ヘッダ・アイコン・CRC・DCI
@@ -743,7 +744,7 @@ D:\DC_VMU
 │   ├── emu_verify.ps1      # Flycast 自動検証 / 目視確認
 │   ├── emu_bleem_card.ps1  # bleem2 + Flycast で PS1 セーブ (BLEEMMC) をゲームに読ませて画面を撮る (-KeyAt でキー送信)
 │   ├── send_keys.ps1       # Flycast にキーを送る (前面化を確認、失敗時は送らない)
-│   ├── build-bleem2-noauto.sh # 自動プレイ無しの bleem2 を .emu/ にビルド (D:\DC は読むだけ)
+│   ├── build-bleem2-noauto.sh # 自動プレイ無しの bleem2 を .emu/ にビルド (H:\DC は読むだけ)
 │   ├── emu_bleem_play.ps1  # 自動プレイ無しの bleem2 で手で遊び、終了後の VMU を保存
 │   ├── make-test-image.js  # 検証用イメージ生成
 │   ├── verify-emu.js       # 検証結果の突き合わせ
@@ -776,6 +777,27 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 
 ## 更新履歴
 
+- **2026-11-05** 総点検で見つかった不具合の修正 (`test/fixes-20261105.test.js`)
+  - **ミニゲームの説明文・アイコンを変えるとプログラムが消えていた** (CLI `desc` / `icon-import`、MCP `vmu_vms_edit`、GUI のアイコン編集)。
+    データの長さ欄より後ろを捨てていたため。後ろも残し、ミニゲームのアイコンのコマ数の変更は止める (番地がずれるため)
+  - 並べ替え: 同じ名前を 2 回渡すとファイルが重なり、同名のファイルが 2 つある壊れたイメージでは 2 つ目が消えていた
+  - FAT のチェーンが FAT・ディレクトリ・ルートのブロックを指す壊れたイメージを `check` が見逃し、書き換えるとディレクトリが壊れていた。
+    今は検出し、書き換えは止める。ユーザー領域の外 (200〜240) を使うファイルも `check` で知らせる
+  - ルートブロックの FAT・ディレクトリの位置が壊れているとき、`RangeError` ではなく分かる説明のエラーにする。範囲外の日時 (0 月など) は「-」
+  - GUI サーバー (`serve.js`): `/.EMU/` のように大文字にすると BIOS の入った `.emu/` が読めていた。「.」で始まるフォルダ・ファイルは
+    すべて出さない。壊れた URL (`%E0%A4%A`) でサーバーが落ちていたのを 400 に。localhost 以外の Host は断る (DNS リバインディング対策)
+  - MCP: バッチの処理中に届いた別の要求の応答がバッチの配列に混ざっていた。`"x.bin#0"` を入力にして `x.bin` に書くと
+    複数ページのファイルを 1 ページで上書きできていた (入力の上書き禁止をすり抜けていた)
+  - 転送 ROM: dcload で動かしたときは ROM 内の自動実行を使わない。テスト用の ROM を `emu/vmutransfer` に残さない
+    (`-Test` のあと、起動するとすぐ VMU を書き換える ROM が残っていた)。PC の書き戻しイメージが 128KB でない・読めないときに
+    ROM 内のイメージへ黙って切り替えない。FAT・ディレクトリの位置も確かめる (4 バイトごとに入れ替わった .dcm をそのまま書かない)
+  - `npm test` 117 件、`verify:emu`・`verify:transfer` (Flycast) PASS。転送 ROM の変更は実機ではまだ試していない
+- **2026-11-05** D: ドライブのパスを修正 (作業フォルダは `H:\DC` に移っていた)
+  - `npm run build:rom` が古い `C:\msys64`・`/d/DC_VMU` を使っていて動かなかった。新しい `scripts/build_rom.ps1` で DreamSDK のシェルからビルドする
+    (`-Rom vmutransfer` で転送 ROM も)。`emu/vmucheck/Makefile` の mkdcdisc も `H:\DC\tools`
+  - `emu_verify.ps1`・`emu_bleem_card.ps1`・`build-bleem2-noauto.sh` の既定のパスを `H:\DC` に
+  - `.mcp.json` のサーバーを相対パス `mcp/server.js` に (どこに clone しても Claude Code で使える)。`mcp/antigravity.mcp.json` の例も今のパスに
+  - `npm run verify:emu`・`npm run verify:transfer` が Flycast で PASS することを確認
 - **2026-11-05** ファイルの日時の読み違いを修正
   - 時計を合わせていない Dreamcast (1998 年) で KallistiOS 製のソフト (bleem2 など) が書いたファイルが「2064 年」と出ていた。
     KallistiOS 2.3 までは 1999 年以前の年を負の数のまま書く (`19 fe`) ため。これを 1998 年と読む (実機の VMU で確認)

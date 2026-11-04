@@ -59,7 +59,10 @@ static void out(const char *fmt, ...) {
 
 static int is_image(const uint8 *img) {
     /* ルートブロック (255) の先頭 16 バイトはフォーマット済みなら 0x55 */
-    for(int i = 0; i < 16; i++) if(img[255 * BLOCK_SIZE + i] != 0x55) return 0;
+    const uint8 *r = img + 255 * BLOCK_SIZE;
+    for(int i = 0; i < 16; i++) if(r[i] != 0x55) return 0;
+    /* FAT 254・ディレクトリ 253 の位置も確かめる (4 バイトごとに入れ替わった .dcm などをそのまま書かないように) */
+    if((r[0x46] | r[0x47] << 8) != 254 || (r[0x4a] | r[0x4b] << 8) != 253) return 0;
     return 1;
 }
 
@@ -128,8 +131,10 @@ static int load_file(const char *path, uint8 *dst) {
     file_t f = fs_open(path, O_RDONLY);
     if(f == FILEHND_INVALID) return -1;
     ssize_t n = io_chunks(f, dst, IMAGE_SIZE, 0);
+    uint8 extra;
+    int longer = n == IMAGE_SIZE && fs_read(f, &extra, 1) > 0;   /* 128 KB より長いファイルは VMU イメージではない */
     fs_close(f);
-    return n == IMAGE_SIZE ? 0 : -2;
+    return n == IMAGE_SIZE && !longer ? 0 : -2;
 }
 
 static uint32 crc32(const uint8 *p, size_t n) {
@@ -170,8 +175,13 @@ static int do_copy(void) {
 }
 
 static int load_restore_image(void) {
-    if(dcload_type != DCLOAD_TYPE_NONE && load_file(PC_RESTORE, image) == 0) {
+    int pc = dcload_type != DCLOAD_TYPE_NONE ? load_file(PC_RESTORE, image) : -1;
+    if(pc == 0) {
         out("source %s", PC_RESTORE);
+    } else if(pc == -2) {
+        /* PC のファイルはあるが読めない・128 KB でない: ROM 内のイメージに切り替えず止める */
+        out("%s is not a 128 KB image (or could not be read)", PC_RESTORE);
+        return -1;
     } else if(load_file("/rd/restore.bin", image) == 0) {
         out("source /rd/restore.bin");
     } else {
@@ -221,7 +231,13 @@ int main(int argc, char **argv) {
     bfont_draw_str(vram_s + 20 * 640 + 20, 640, 1, "VMU Workbench transfer  A:dump to PC  X:copy A1->A2  Y:restore to A1");
     out("dcload: %s", dcload_type == DCLOAD_TYPE_NONE ? "none" : "connected (/pc)");
     out("A1 %s / A2 %s", vmu_at(0, 1) ? "VMU" : "-", vmu_at(0, 2) ? "VMU" : "-");
-    run_auto("/rd/auto");
+    /* ROM 内の auto は Flycast での自動検証用。dcload で動かしたときは使わない
+       (古いテスト用ビルドを実機に送っても、確認なしに VMU を書き換えないように) */
+    if(dcload_type == DCLOAD_TYPE_NONE) run_auto("/rd/auto");
+    else {
+        file_t t = fs_open("/rd/auto", O_RDONLY);
+        if(t != FILEHND_INVALID) { fs_close(t); out("ignoring /rd/auto (test build) under dcload"); }
+    }
     if(dcload_type != DCLOAD_TYPE_NONE) {
         int r = run_auto(PC_CMD);
         if(r >= 0) {

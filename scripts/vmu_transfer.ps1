@@ -53,7 +53,7 @@ if (-not $Test) {
     Write-Host "作成: $cdi"
     if ($Restore -ne "") { Write-Host "実機で起動 → Y → START で A1 の VMU を $Restore の内容に置き換えます (元に戻せません)。" }
     Write-Host "A: A1 → PC (/pc/vmu_dump.bin、dcload 接続時のみ)   X: A1 → A2 コピー   Y: 書き戻し"
-    Write-Host "注意: 実機での動作は未確認です (Flycast でのみ検証済み)。大事なセーブは先に別の VMU にコピーしてください。"
+    Write-Host "dcload-ip での吸い出し・書き戻しは実機で確認済み (2026-11)。大事なセーブは先に別の VMU にもコピーしておいてください。"
     exit 0
 }
 
@@ -72,8 +72,13 @@ Remove-Item $restoreImg -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -ne 0) { exit 1 }
 Copy-Item $restoreImg (Join-Path $romdisk "restore.bin")
 Set-Content -NoNewline -Encoding ascii (Join-Path $romdisk "auto") "copy restore"
-Build-Rom
-Get-ChildItem $romdisk -Exclude ".gitignore" | Remove-Item -Force
+try { Build-Rom }
+finally { Get-ChildItem $romdisk -Exclude ".gitignore" | Remove-Item -Force }   # ビルドに失敗しても auto を残さない
+# テスト用の ROM は起動するとすぐに A1・A2 を書き換えるので、実機で使う場所 (emu/vmutransfer) には残さない
+$testCdi = Join-Path $outDir "vmutransfer_test.cdi"
+Move-Item $cdi $testCdi -Force
+foreach ($f in "vmutransfer.elf", "romdisk.img", "romdisk.o") { Remove-Item (Join-Path $romDir $f) -ErrorAction SilentlyContinue }
+$cdi = $testCdi
 
 # 専用 Flycast 環境 (emu_verify.ps1 と同じ設定)
 $data = Join-Path $emu "data"

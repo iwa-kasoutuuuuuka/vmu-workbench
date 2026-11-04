@@ -10,13 +10,13 @@
 #     ディスク無しで Flycast を起動 (Dreamcast BIOS のメモリーカード画面でファイル・アイコンを確認)。
 #     終了後の VMU イメージを .emu/out/after_manual.bin に保存。
 #
-# Flycast と BIOS は D:\DC\flycast-memcard を元に .emu/ へコピーする (-FlycastSrc で変更可)。
+# Flycast と BIOS は H:\DC\flycast-memcard を元に .emu/ へコピーする (-FlycastSrc で変更可)。
 # BIOS は著作物のため .emu/ は .gitignore 済み。再配布しないこと。
 param(
     [string]$Image = "",
     [switch]$Manual,
     [int]$Timeout = 90,
-    [string]$FlycastSrc = "D:\DC\flycast-memcard"
+    [string]$FlycastSrc = "H:\DC\flycast-memcard"
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent

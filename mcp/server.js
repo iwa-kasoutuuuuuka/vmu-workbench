@@ -42,17 +42,19 @@ const absPath = (p) => (isAbsolute(p) ? resolve(p) : resolve(ROOT, p));
 const PROTECTED_DIRS = ['src', 'mcp', 'defs', 'test', 'scripts', 'emu', 'node_modules', '.claude', '.agent', '.git'];
 
 /**
- * 書き込み先の制限 (D:\DC やソースを誤って書き換えないため):
- * プロジェクトのフォルダ (D:\DC_VMU) 内の .bin のみ。コード・定義のフォルダと、入力に使ったイメージは不可
+ * 書き込み先の制限 (ほかのフォルダやソースを誤って書き換えないため):
+ * プロジェクトのフォルダ (VMU Workbench のフォルダ) 内の .bin のみ。コード・定義のフォルダと、入力に使ったイメージは不可
  */
 function outPath(p, fallbackName, inputs = []) {
   const target = absPath(p ?? join(WORK, fallbackName));
   const rel = relative(ROOT, target);
-  if (!rel || rel.startsWith('..') || isAbsolute(rel)) throw new Error(`書き込み先はプロジェクトのフォルダ (D:\DC_VMU) 内にしてください: ${target}`);
+  if (!rel || rel.startsWith('..') || isAbsolute(rel)) throw new Error(`書き込み先はプロジェクトのフォルダ (VMU Workbench のフォルダ) 内にしてください: ${target}`);
   if (!/\.bin$/i.test(target)) throw new Error(`書き込み先は .bin ファイルにしてください: ${rel}`);
   const top = rel.split(/[\\/]/)[0].toLowerCase();
   if (PROTECTED_DIRS.includes(top)) throw new Error(`${top}/ には書き込めません (.emu/work/ などを使ってください)`);
-  if (inputs.some((i) => i && absPath(i).toLowerCase() === target.toLowerCase())) {
+  // "x.bin#1" (ページ) や "x.bin@3" (履歴の版) も x.bin そのものとして比べる (複数ページのファイルを 1 ページで上書きしないように)
+  const bare = (i) => absPath(existsSync(absPath(i)) ? i : i.replace(/(#\d+|@\d+)+$/, '')).toLowerCase();
+  if (inputs.some((i) => i && bare(i) === target.toLowerCase())) {
     throw new Error('入力のイメージは上書きできません (out に別のパスを指定してください)');
   }
   mkdirSync(dirname(target), { recursive: true });
@@ -128,7 +130,7 @@ const checksumsText = (sums) => sums.map((c) => (c.inRange
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
 const num = (description) => ({ type: 'number', description });
-const IMG = str('VMU イメージ (128KB .bin) のパス。相対パスはプロジェクトのフォルダ (D:\DC_VMU) 基準。"パス@番号" で CLI の履歴の版、"パス#n" で複数ページのファイルのページ');
+const IMG = str('VMU イメージ (128KB .bin) のパス。相対パスはプロジェクトのフォルダ (VMU Workbench のフォルダ) 基準。"パス@番号" で CLI の履歴の版、"パス#n" で複数ページのファイルのページ');
 const FILE = str('VMU 上のファイル名 (例 BLEEMMC, SONIC2___S01)');
 const DEF = str('構造定義の id (defs/) または JSON ファイルのパス。省略時は一致する定義を自動選択');
 const OUT = str('書き込み先 (プロジェクトのフォルダ内)。省略時は .emu/work/ に作る。入力イメージは上書きしない');
@@ -522,7 +524,7 @@ const INSTRUCTIONS = `VMU Workbench (旧名 DC_VMU): Dreamcast VMU イメージ�
 確認できた項目を vmu_def_save で defs/ に保存 (推定の項目は名前に ? を付け、note に根拠を書く)。
 書き込み系のツールは入力イメージを上書きせず、プロジェクトのフォルダ内 (既定 .emu/work/) に新しいイメージを作る。`;
 
-let send = (msg) => {
+const send = (msg) => {
   process.stdout.write(`${JSON.stringify(msg)}\n`);
 };
 
@@ -531,22 +533,17 @@ function textResult(value, isError = false) {
   return { content: [{ type: 'text', text }], isError };
 }
 
-async function handle(msg) {
+async function handle(msg, reply = send) {
   if (Array.isArray(msg)) {
     // バッチ: まとめて処理し、応答 (通知以外) を配列で返す
+    // (応答は呼び出しごとに集める。全体の send を差し替えると、同時に処理中の別の要求の応答まで混ざる)
     const replies = [];
-    const orig = send;
-    send = (m) => replies.push(m);
-    try {
-      for (const m of msg) await handle(m);
-    } finally {
-      send = orig;
-    }
-    if (replies.length) send(replies);
+    for (const m of msg) await handle(m, (x) => replies.push(x));
+    if (replies.length) reply(replies);
     return;
   }
   if (!msg || typeof msg !== 'object') {
-    send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'invalid request' } });
+    reply({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'invalid request' } });
     return;
   }
   const { id, method, params } = msg;
@@ -554,32 +551,32 @@ async function handle(msg) {
   try {
     switch (method) {
       case 'initialize':
-        return send({ jsonrpc: '2.0', id, result: {
+        return reply({ jsonrpc: '2.0', id, result: {
           protocolVersion: params?.protocolVersion ?? '2025-06-18',
           capabilities: { tools: {} },
           serverInfo: { name: 'dc-vmu', title: 'VMU Workbench', version: VERSION },
           instructions: INSTRUCTIONS,
         } });
       case 'ping':
-        return send({ jsonrpc: '2.0', id, result: {} });
+        return reply({ jsonrpc: '2.0', id, result: {} });
       case 'tools/list':
-        return send({ jsonrpc: '2.0', id, result: {
+        return reply({ jsonrpc: '2.0', id, result: {
           tools: Object.entries(tools).map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema })),
         } });
       case 'tools/call': {
         const tool = tools[params?.name];
-        if (!tool) return send({ jsonrpc: '2.0', id, error: { code: -32602, message: `unknown tool: ${params?.name}` } });
+        if (!tool) return reply({ jsonrpc: '2.0', id, error: { code: -32602, message: `unknown tool: ${params?.name}` } });
         try {
-          return send({ jsonrpc: '2.0', id, result: textResult(await tool.run(params.arguments ?? {})) });
+          return reply({ jsonrpc: '2.0', id, result: textResult(await tool.run(params.arguments ?? {})) });
         } catch (err) {
-          return send({ jsonrpc: '2.0', id, result: textResult(`エラー: ${err.message}`, true) });
+          return reply({ jsonrpc: '2.0', id, result: textResult(`エラー: ${err.message}`, true) });
         }
       }
       default:
-        return send({ jsonrpc: '2.0', id, error: { code: -32601, message: `method not found: ${method}` } });
+        return reply({ jsonrpc: '2.0', id, error: { code: -32601, message: `method not found: ${method}` } });
     }
   } catch (err) {
-    send({ jsonrpc: '2.0', id, error: { code: -32603, message: err.message } });
+    reply({ jsonrpc: '2.0', id, error: { code: -32603, message: err.message } });
   }
 }
 

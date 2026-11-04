@@ -5,7 +5,7 @@
 #
 # 結果: .emu/out/bleem_<Tag>/shot_NNN_w*.png (2 秒毎の画面とシリアル窓), bleemlog.txt (bleem2 のログ)
 # 前提: npm run verify:emu を一度実行して .emu/ (Flycast と BIOS) が用意されていること。
-# D:\DC 側は bleem2 の CDI と画面キャプチャスクリプトを読むだけで、何も書き換えない。
+# H:\DC 側は bleem2 の CDI と画面キャプチャスクリプトを読むだけで、何も書き換えない。
 param(
     [Parameter(Mandatory = $true)][string]$Image,
     [string]$Tag = "run",
@@ -14,8 +14,8 @@ param(
     [int]$Interval = 2,
     [string]$KeyAt = "",        # 指定秒にキーを送る。例 "105:DOWN,130:ENTER" (Flycast を前面に出して送る)
     [string]$SendKeys = "",     # 既定は scripts/send_keys.ps1 (前面化を確認してから送る)
-    [string]$Cdi = "D:\DC\bleem2-memcard\build\bleem2.cdi",
-    [string]$Capture = "D:\DC\bleem2\scripts\capture_flycast.ps1"
+    [string]$Cdi = "H:\DC\bleem2-memcard\build\bleem2.cdi",
+    [string]$Capture = "H:\DC\bleem2\scripts\capture_flycast.ps1"
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent

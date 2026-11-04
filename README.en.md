@@ -92,8 +92,8 @@ fix them with `node cli.js fixroot vmu.bin`.
 ## AI agents (MCP)
 
 `mcp/server.js` is a dependency-free MCP server (stdio). It is registered in `.mcp.json`, so Claude Code picks it up as server `dc-vmu`
-when this folder is opened. The path in `.mcp.json` and `mcp/antigravity.mcp.json` is the author's (`D:/DC_VMU/mcp/server.js`);
-change it to where you cloned the repository. For Antigravity, add the entry in `mcp/antigravity.mcp.json` to `~/.gemini/config/mcp_config.json` (the older Antigravity IDE reads `~/.gemini/antigravity-ide/mcp_config.json`; `~/.gemini/antigravity/mcp_config.json` is not read).
+when this folder is opened. `.mcp.json` uses the relative path `mcp/server.js`, so it works wherever you clone the repository;
+the path in `mcp/antigravity.mcp.json` is an example (`H:/DC/tools/vmu-workbench/mcp/server.js`), change it to your clone. For Antigravity, add the entry in `mcp/antigravity.mcp.json` to `~/.gemini/config/mcp_config.json` (the older Antigravity IDE reads `~/.gemini/antigravity-ide/mcp_config.json`; `~/.gemini/antigravity/mcp_config.json` is not read).
 
 Tools include `vmu_list`, `vmu_fields`, `vmu_dump`, `vmu_diff`, `vmu_find`, `vmu_scan`, `vmu_set`, `vmu_patch`, `vmu_variants`,
 `vmu_heatmap`, `vmu_vms_edit`, `vmu_history`, `vmu_defrag`, `vmu_def_validate`, `vmu_def_save`, `vmu_run_game`, `vmu_emu_verify`

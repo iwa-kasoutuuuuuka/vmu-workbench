@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "dc-vmu": {
-      "command": "C:/nvm4w/nodejs/node.exe",
-      "args": ["D:/DC_VMU/mcp/server.js"]
+      "command": "node",
+      "args": ["H:/DC/tools/vmu-workbench/mcp/server.js"]
     }
   }
 }

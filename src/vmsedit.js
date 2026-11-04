@@ -1,5 +1,6 @@
 // VMS ヘッダの編集: 説明文・アイコン (16 色パレット + 32x32 4bpp × 1〜3 コマ)・アニメ速度
 // アイコンのコマ数を変えるとファイルサイズが変わるため、ヘッダ/アイコン/アイキャッチ/データを組み直す。
+import { FILE_GAME } from './vmu.js';
 import { parseHeader, headerPosition, HEADER_SIZE, ICON_SIZE, argb4444ToRgba, rgbaToArgb4444, updateCrc } from './vms.js';
 
 export const ICON_W = 32;
@@ -42,7 +43,11 @@ export function editVms(file, entry, changes) {
   const head = file.slice(0, h.offset); // ゲームファイルのプログラム部分
   const header = file.slice(h.offset, h.offset + HEADER_SIZE);
   const eyecatch = file.slice(h.eyecatchOffset, h.dataOffset);
-  const data = file.slice(h.dataOffset, Math.min(file.length, h.dataOffset + h.dataSize));
+  // データの長さ欄より後ろも残す (ミニゲームはアイコンの後ろにプログラムが続き、長さ欄は 0 のことが多い)。
+  // 末尾の 0 は詰める (アイコンが増えたとき、余白のせいでブロックが増えないように)
+  let end = file.length;
+  while (end > h.dataOffset + h.dataSize && file[end - 1] === 0) end--;
+  const data = file.slice(h.dataOffset, end);
   let icons = file.slice(h.iconsOffset, h.eyecatchOffset);
   const v = new DataView(header.buffer);
 
@@ -59,6 +64,9 @@ export function editVms(file, entry, changes) {
   if (changes.frames !== undefined) {
     const n = changes.frames.length;
     if (n < 1 || n > 3) throw new Error('アイコンは 1〜3 コマです');
+    if (entry.type === FILE_GAME && n !== h.iconCount) {
+      throw new Error(`ミニゲームのアイコンのコマ数は変えられません (${h.iconCount} コマ。変えるとプログラムの位置がずれて動かなくなります)`);
+    }
     icons = new Uint8Array(n * ICON_SIZE);
     changes.frames.forEach((px, f) => {
       if (px.length !== ICON_W * ICON_H) throw new Error(`コマ ${f + 1} の画素数が ${ICON_W}x${ICON_H} ではありません`);

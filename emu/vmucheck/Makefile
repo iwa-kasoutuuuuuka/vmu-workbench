@@ -1,12 +1,12 @@
 #
 # vmucheck — VMU Workbench エミュレーター検証用ROM
-# MSYS2 MinGW64 で: source /d/DC/KallistiOS/environ.sh && make cdi
+# DreamSDK のシェルで: source /h/DC/KallistiOS/environ.sh && make cdi
 #
 
 TARGET = vmucheck.elf
 OBJS = main.o
 CDI = vmucheck.cdi
-MKDCDISC = /d/DC/tools/mkdcdisc_bin/mkdcdisc_win/mkdcdisc64.exe
+MKDCDISC ?= /h/DC/tools/mkdcdisc_bin/mkdcdisc_win/mkdcdisc64.exe
 
 KOS_CFLAGS += -std=gnu99
 
