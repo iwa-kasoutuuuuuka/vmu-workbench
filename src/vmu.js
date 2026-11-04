@@ -23,10 +23,23 @@ const NAME_LENGTH = 12;
 const toBcd = (n) => ((Math.floor(n / 10) % 10) << 4) | (n % 10);
 const fromBcd = (b) => (b >> 4) * 10 + (b & 0x0f);
 
+const isBcd = (b) => (b >> 4) <= 9 && (b & 0x0f) <= 9;
+
 // 8バイトBCDタイムスタンプ: 世紀, 年, 月, 日, 時, 分, 秒, 曜日(0=月曜)
+// 読めない日時 (BCD でない桁がある) は null。
 export function decodeTimestamp(bytes) {
   if (bytes.every((b) => b === 0)) return null;
-  const year = fromBcd(bytes[0]) * 100 + fromBcd(bytes[1]);
+  let year;
+  if (bytes[0] === 0x19 && bytes[1] >= 0xf0) {
+    // KallistiOS (2.3 まで) は 1999 年以前を「年 - 2000」の負の数のまま書く (1998 年 → 19 fe)。
+    // 時計を合わせていない Dreamcast は 1998 年なので、bleem2 などの KOS 製ソフトのファイルでよく出る。
+    year = 2000 + (bytes[1] - 0x100);
+  } else if (isBcd(bytes[0]) && isBcd(bytes[1])) {
+    year = fromBcd(bytes[0]) * 100 + fromBcd(bytes[1]);
+  } else {
+    return null;
+  }
+  if (!bytes.subarray(2, 7).every(isBcd)) return null;
   const d = new Date(2000, 0, 1, fromBcd(bytes[4]), fromBcd(bytes[5]), fromBcd(bytes[6]));
   d.setFullYear(year, fromBcd(bytes[2]) - 1, fromBcd(bytes[3])); // new Date(y<100) は 1900 年代になるため
   return d;

@@ -130,3 +130,16 @@ test('チェックサム定義の追加検証', async () => {
   assert.match(validateDef({ ...base, checksums: [{ type: 'sum8', from: 0, to: 8, at: 0x10, store: 'u16le' }] }).join(), /フィールド v と重なって/);
   assert.deepEqual(validateDef({ ...base, checksums: [{ type: 'sum16le', from: 0, to: 8, at: 8, store: 'u16le' }] }), []);
 });
+
+test('KallistiOS が 1999 年以前を負の数で書いた日時 (19 fe = 1998 年) を読める', () => {
+  const d = decodeTimestamp(Uint8Array.of(0x19, 0xfe, 0x11, 0x27, 0x02, 0x09, 0x34, 0x04));
+  assert.equal(d.getFullYear(), 1998);
+  assert.equal(d.getMonth() + 1, 11);
+  assert.equal(d.getDate(), 27);
+  assert.equal(d.getHours(), 2);
+});
+
+test('BCD でない日時は null (でたらめな年を出さない)', () => {
+  assert.equal(decodeTimestamp(Uint8Array.of(0x20, 0x26, 0x1a, 0x01, 0x00, 0x00, 0x00, 0x00)), null);
+  assert.equal(decodeTimestamp(Uint8Array.of(0x2a, 0x26, 0x11, 0x01, 0x00, 0x00, 0x00, 0x00)), null);
+});
