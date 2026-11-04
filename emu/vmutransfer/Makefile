@@ -9,7 +9,7 @@ TARGET = vmutransfer.elf
 OBJS = main.o romdisk.o
 KOS_ROMDISK_DIR = romdisk
 CDI = vmutransfer.cdi
-MKDCDISC = /d/DC/tools/mkdcdisc_bin/mkdcdisc_win/mkdcdisc64.exe
+MKDCDISC ?= /h/DC/tools/mkdcdisc_bin/mkdcdisc_win/mkdcdisc64.exe
 
 KOS_CFLAGS += -std=gnu99
 .DEFAULT_GOAL := all

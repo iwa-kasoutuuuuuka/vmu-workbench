@@ -8,13 +8,18 @@
 #   Flycast で自動検証:      powershell -File scripts/vmu_transfer.ps1 -Test
 #     A1 = テスト用イメージ、A2 = 空の VMU で起動し、「A1 → A2 の丸ごとコピー」と「埋め込んだイメージを A1 に書き戻す」
 #     を自動実行させて、両方がバイト単位で一致するか scripts/verify-transfer.js で確かめる。
+#     2 回目は A1 = 書き戻すイメージを 3 ブロックだけ変えたもの、A2 = A1 と同じ中身で起動し、
+#     コピーが 0 ブロック、書き戻しが違う 3 ブロックだけを書くことを確かめる (書き込みは違うブロックだけ)。
+#     .emu の emu.cfg と A1 / A2 は検証の前に控えて、終わったら元に戻す。
 #
-# Flycast と BIOS は emu_verify.ps1 と同じく D:\DC\flycast-memcard から .emu/ へコピーして使う (D:\DC 側は書き換えない)。
+# Flycast と BIOS は -FlycastSrc (既定 H:\DC\flycast-memcard) から .emu/ へコピーして使う (コピー元は書き換えない)。
+# ビルドは DreamSDK のシェルで KallistiOS の environ.sh (-KosEnviron) を読み込んで make する。
 param(
     [string]$Restore = "",
     [switch]$Test,
     [int]$Timeout = 120,
-    [string]$FlycastSrc = "D:\DC\flycast-memcard"
+    [string]$FlycastSrc = "H:\DC\flycast-memcard",
+    [string]$KosEnviron = "/h/DC/KallistiOS/environ.sh"
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -27,8 +32,10 @@ $outDir = Join-Path $emu "out\transfer"
 New-Item -ItemType Directory -Force $romdisk, $outDir | Out-Null
 
 function Build-Rom {
-    $bash = "C:\msys64\usr\bin\bash.exe"
-    & $bash -lc "export MSYSTEM=MINGW64 TMP=/tmp TEMP=/tmp LANG=C; cd /d/DC_VMU/emu/vmutransfer && source /d/DC/KallistiOS/environ.sh && make cdi" | Out-Host
+    # DreamSDK のシェル (MSYS2) で KallistiOS の環境を読み込んで make する
+    $bash = "C:\DreamSDK\usr\bin\bash.exe"
+    $posixDir = "/" + $romDir.Substring(0, 1).ToLower() + ($romDir.Substring(2) -replace '\\', '/')
+    & $bash --login -c "export MSYSTEM=MINGW64 LANG=C; source $KosEnviron >/dev/null && cd '$posixDir' && make cdi" | Out-Host
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $cdi)) { throw "ROM のビルドに失敗しました" }
 }
 
@@ -83,38 +90,106 @@ $cfg = $cfg -replace '^Dreamcast\.BiosPath = .*', "Dreamcast.BiosPath = $data" `
             -replace '^DiscordPresence = .*', 'DiscordPresence = no' `
             -replace '^UploadCrashLogs = .*', 'UploadCrashLogs = no' `
             -replace '^FetchBoxart = .*', 'FetchBoxart = no'
-Set-Content (Join-Path $emu "emu.cfg") $cfg
-
 $a1 = Join-Path $data "vmu_save_A1.bin"
 $a2 = Join-Path $data "vmu_save_A2.bin"
-$a2Backup = Join-Path $outDir "a2_before_test.bin"
-if (Test-Path $a2) { Copy-Item $a2 $a2Backup -Force }
-Copy-Item $orig $a1 -Force
-Remove-Item $a2 -ErrorAction SilentlyContinue
-& node $cli format $a2 | Out-Null
+# .emu は他の作業フォルダと共用のことがあるので、設定と VMU を控えておき最後に戻す
+$cfgPath = Join-Path $emu "emu.cfg"
+$saved = @{}
+foreach ($f in $cfgPath, $a1, $a2) {
+    if (Test-Path $f) { $saved[$f] = Join-Path $outDir ((Split-Path $f -Leaf) + ".before_test"); Copy-Item $f $saved[$f] -Force }
+}
+Set-Content $cfgPath $cfg
 
 function Stop-OurFlycast {
     Get-Process flycast -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $flycast } |
         Stop-Process -Force -ErrorAction SilentlyContinue
 }
-Stop-OurFlycast
-Start-Sleep -Milliseconds 300
-$p = Start-Process -FilePath $flycast -ArgumentList "`"$cdi`"" -WorkingDirectory $emu -PassThru
+# Flycast が VMU ファイルを開いたままにしているか。Flycast は削除の共有を許さずに開くので、削除権限だけで開こうとすると失敗する
+function Test-Held([string]$path) {
+    try {
+        $fs = New-Object IO.FileStream($path, [IO.FileMode]::Open, [Security.AccessControl.FileSystemRights]::Delete,
+                                       ([IO.FileShare]"ReadWrite, Delete"), 4096, [IO.FileOptions]::None)
+        $fs.Close()
+        return $false
+    } catch { return $true }
+}
+# Flycast を起動し、$check が成功する (終了コード 0) まで待つ。
+# $poison (VMU ファイル → 中身) を渡すと、Flycast が VMU を読み込んで開いた直後にファイルをその中身で上書きする。
+# Flycast は ROM が書いたブロックのバイトだけをファイルに書くので、終了後のファイルで「書いたブロック」が分かる
+function Invoke-Flycast([scriptblock]$check, [hashtable]$poison) {
+    Stop-OurFlycast
+    Start-Sleep -Milliseconds 300
+    $p = Start-Process -FilePath $flycast -ArgumentList "`"$cdi`"" -WorkingDirectory $emu -PassThru
+    $t0 = Get-Date
+    if ($poison) {
+        # 2 回続けて開いたままなら読み込み (一瞬だけ開く) は終わっている
+        $streak = 0
+        while ($streak -lt 2 -and ((Get-Date) - $t0).TotalSeconds -lt 30 -and -not $p.HasExited) {
+            Start-Sleep -Milliseconds 250
+            if (@($poison.Keys | Where-Object { -not (Test-Held $_) }).Count -eq 0) { $streak++ } else { $streak = 0 }
+        }
+        if ($streak -lt 2) { Write-Host "Flycast が VMU ファイルを開きませんでした"; Stop-OurFlycast; return $false }
+        foreach ($k in $poison.Keys) {
+            $b = [IO.File]::ReadAllBytes($poison[$k])
+            $fs = New-Object IO.FileStream($k, [IO.FileMode]::Open, [IO.FileAccess]::Write, ([IO.FileShare]"ReadWrite, Delete"))
+            $fs.Write($b, 0, $b.Length)
+            $fs.Close()
+        }
+    }
+    $done = $false
+    while (((Get-Date) - $t0).TotalSeconds -lt $Timeout) {
+        Start-Sleep -Seconds 2
+        if ($p.HasExited) { Write-Host "Flycast が途中で終了しました"; break }
+        $null = & $check
+        if ($LASTEXITCODE -eq 0) { $done = $true; break }
+    }
+    Start-Sleep -Seconds 2
+    Stop-OurFlycast
+    Start-Sleep -Milliseconds 500
+    if (-not $done) { Write-Host "タイムアウト ($Timeout 秒) — 一致しませんでした" }
+    return $done
+}
+
 $ErrorActionPreference = "Continue"
 $verify = Join-Path $root "scripts\verify-transfer.js"
-$t0 = Get-Date
-$done = $false
-while (((Get-Date) - $t0).TotalSeconds -lt $Timeout) {
-    Start-Sleep -Seconds 2
-    if ($p.HasExited) { Write-Host "Flycast が途中で終了しました"; break }
-    & node $verify $orig $a2 $restoreImg $a1 --quiet
-    if ($LASTEXITCODE -eq 0) { $done = $true; break }
+$pass = $true
+try {
+    # 1 回目: A1 = テスト用イメージ、A2 = 空 → 丸ごとコピーと書き戻しで中身がバイト単位で一致するか
+    Write-Host "== 1: A1 → 空の A2 にコピー、A1 に別のイメージを書き戻す"
+    Copy-Item $orig $a1 -Force
+    Remove-Item $a2 -ErrorAction SilentlyContinue
+    & node $cli format $a2 | Out-Null
+    $null = Invoke-Flycast { & node $verify $orig $a2 $restoreImg $a1 --quiet } $null
+    Copy-Item $a1 (Join-Path $outDir "after_a1.bin") -Force
+    Copy-Item $a2 (Join-Path $outDir "after_a2.bin") -Force
+    & node $verify $orig (Join-Path $outDir "after_a2.bin") $restoreImg (Join-Path $outDir "after_a1.bin")
+    if ($LASTEXITCODE -ne 0) { $pass = $false }
+
+    # 2 回目: 違うブロックだけ書くか。A1 = 書き戻すイメージの 3 ブロック (5, 100, ルート 255) だけ変えたもの、A2 = A1 と同じ
+    #   COPY A1 → A2 は 0 ブロック、RESTORE は 3 ブロックだけ書くはず
+    Write-Host "== 2: 同じ中身へのコピー (0 ブロック) と 3 ブロック違いの書き戻し"
+    $diffImg = Join-Path $outDir "diff3_a1.bin"
+    $poisonA1 = Join-Path $outDir "poison_a1.bin"
+    $poisonA2 = Join-Path $outDir "poison_a2.bin"
+    & node $verify --flip $restoreImg $diffImg 5 100 255
+    & node $verify --invert $restoreImg $poisonA1
+    & node $verify --invert $diffImg $poisonA2
+    Copy-Item $diffImg $a1 -Force
+    Copy-Item $diffImg $a2 -Force
+    $null = Invoke-Flycast {
+        & node $verify --written "COPY" $diffImg $diffImg $a2 --quiet
+        if ($LASTEXITCODE -eq 0) { & node $verify --written "RESTORE" $diffImg $restoreImg $a1 --quiet }
+    } @{ $a1 = $poisonA1; $a2 = $poisonA2 }
+    Copy-Item $a1 (Join-Path $outDir "after2_a1.bin") -Force
+    Copy-Item $a2 (Join-Path $outDir "after2_a2.bin") -Force
+    & node $verify --written "COPY A1→A2 (同じ中身)" $diffImg $diffImg (Join-Path $outDir "after2_a2.bin")
+    if ($LASTEXITCODE -ne 0) { $pass = $false }
+    & node $verify --written "RESTORE →A1 (3 ブロック違い)" $diffImg $restoreImg (Join-Path $outDir "after2_a1.bin")
+    if ($LASTEXITCODE -ne 0) { $pass = $false }
 }
-Start-Sleep -Seconds 2
-Stop-OurFlycast
-Start-Sleep -Milliseconds 500
-Copy-Item $a1 (Join-Path $outDir "after_a1.bin") -Force
-Copy-Item $a2 (Join-Path $outDir "after_a2.bin") -Force
-if (-not $done) { Write-Host "タイムアウト ($Timeout 秒) — 一致しませんでした" }
-& node $verify $orig (Join-Path $outDir "after_a2.bin") $restoreImg (Join-Path $outDir "after_a1.bin")
-exit $LASTEXITCODE
+finally {
+    Stop-OurFlycast
+    foreach ($f in $saved.Keys) { Copy-Item $saved[$f] $f -Force }
+}
+Write-Host $(if ($pass) { "PASS (全体)" } else { "FAIL (全体)" })
+exit $(if ($pass) { 0 } else { 1 })

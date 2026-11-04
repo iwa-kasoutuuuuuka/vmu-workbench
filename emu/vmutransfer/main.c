@@ -75,22 +75,32 @@ static int read_vmu(maple_device_t *dev, uint8 *dst) {
     return 0;
 }
 
-static int write_vmu(maple_device_t *dev, const uint8 *src) {
+static int write_vmu(maple_device_t *dev, const uint8 *src, int *written) {
     /* ルートブロックを最後に書く (途中で失敗してもフォーマット情報が古いまま残るように) */
+    /* 先に今の中身を読み、同じブロックは書かない (書き込みは遅く、フラッシュも減る)。読めなければ違うとみなして書く。
+       ブロックは 0 から順に処理するのでルート (255) は変わっていれば最後に書かれる。書いた数を *written に返す */
+    int last = -1;
+    *written = 0;
     for(int b = 0; b < BLOCKS; b++) {
-        int ok = -1;
-        for(int retry = 0; retry < 3 && ok != 0; retry++) {
-            ok = vmu_block_write(dev, b, src + b * BLOCK_SIZE);
-            if(ok == 0) ok = vmu_block_read(dev, b, check) == 0 && !memcmp(check, src + b * BLOCK_SIZE, BLOCK_SIZE) ? 0 : -1;
-        }
-        if(ok != 0) {
-            out("WRITE ERROR block %d", b);
-            return -1;
+        const uint8 *want = src + b * BLOCK_SIZE;
+        if(vmu_block_read(dev, b, check) != 0 || memcmp(check, want, BLOCK_SIZE)) {
+            int ok = -1;
+            for(int retry = 0; retry < 3 && ok != 0; retry++) {
+                ok = vmu_block_write(dev, b, want);
+                if(ok == 0) ok = vmu_block_read(dev, b, check) == 0 && !memcmp(check, want, BLOCK_SIZE) ? 0 : -1;
+            }
+            if(ok != 0) {
+                out("WRITE ERROR block %d", b);
+                return -1;
+            }
+            last = b;
+            (*written)++;
         }
         if((b & 63) == 63) out("  %d / %d", b + 1, BLOCKS);
     }
-    /* Flycast は最後の書き込みの末尾 128 バイトをファイルに保存しないことがあるので、ルートを書き直して確定させる */
-    vmu_block_write(dev, 255, src + 255 * BLOCK_SIZE);
+    /* Flycast は最後の書き込みの末尾 128 バイトをファイルに保存しないことがあるので、最後に書いたブロック
+       (ルートが変わっていればルート) をもう一度書いて確定させる。何も書いていなければ何もしない */
+    if(last >= 0) vmu_block_write(dev, last, src + last * BLOCK_SIZE);
     return 0;
 }
 
@@ -152,8 +162,10 @@ static int do_copy(void) {
     if(!a1 || !a2) { out("COPY needs VMUs at A1 and A2"); return -1; }
     out("COPY A1 -> A2");
     if(read_vmu(a1, image) != 0) return -1;
-    int r = write_vmu(a2, image);
-    out("COPY %s crc32 %08lx", r == 0 ? "OK" : "ERROR", (unsigned long)crc32(image, IMAGE_SIZE));
+    int written = 0;
+    int r = write_vmu(a2, image, &written);
+    out("COPY %s crc32 %08lx (%d/%d written)", r == 0 ? "OK" : "ERROR",
+        (unsigned long)crc32(image, IMAGE_SIZE), written, BLOCKS);
     return r;
 }
 
@@ -174,10 +186,12 @@ static int do_restore(void) {
     maple_device_t *a1 = vmu_at(slot_port, slot_unit);
     if(!a1) { out("NO VMU at %c%d", 'A' + slot_port, slot_unit); return -1; }
     out("RESTORE -> %c%d", 'A' + slot_port, slot_unit);
-    int r = write_vmu(a1, image);
-    out("RESTORE %s crc32 %08lx", r == 0 ? "OK" : "ERROR", (unsigned long)crc32(image, IMAGE_SIZE));
-    snprintf(result + strlen(result), sizeof(result) - strlen(result), "restore %s %08lx\n",
-             r == 0 ? "OK" : "ERROR", (unsigned long)crc32(image, IMAGE_SIZE));
+    int written = 0;
+    int r = write_vmu(a1, image, &written);
+    out("RESTORE %s crc32 %08lx (%d/%d written)", r == 0 ? "OK" : "ERROR",
+        (unsigned long)crc32(image, IMAGE_SIZE), written, BLOCKS);
+    snprintf(result + strlen(result), sizeof(result) - strlen(result), "restore %s %08lx written=%d\n",
+             r == 0 ? "OK" : "ERROR", (unsigned long)crc32(image, IMAGE_SIZE), written);
     return r;
 }
 

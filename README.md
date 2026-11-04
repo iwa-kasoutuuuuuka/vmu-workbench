@@ -382,7 +382,7 @@ node cli.js import  vmu.bin hello.vms HELLO --game   # ミニゲームとして�
 node cli.js run     vmu.bin --keys "1:right,1.5:" --seconds 2 --png lcd.png   # ミニゲームを動かして画面を表示
 node cli.js ps1-list   vmu.bin              # bleem2 の PS1 メモリーカード (BLEEMMC) の中のセーブ一覧
 node cli.js ps1-export vmu.bin BLEEMMC card.mcr   # PS1 カードを 128KB の生イメージ (.mcr / .mcd) で書き出し
-node cli.js ps1-import vmu.bin BLEEMMC card.mcr   # 編集したカード (.mcr / .mcd / .gme) を圧縮して戻す (無ければ作る)
+node cli.js ps1-import vmu.bin BLEEMMC card.mcr   # 編集したカード (.mcr / .mcd / .gme) を圧縮して戻す (無ければ作る。VMU に入らなければ何も書かずに止まる)
 node cli.js title   vmu.bin                  # タイトルの推定と根拠 (タイトル DB → VMS ヘッダ → PS1 セーブ)
 node cli.js heatmap SAVE old.bin mid.bin new.bin   # 古い順に並べたセーブで、よく変わる範囲 (フィールド名付き)
 node cli.js desc    vmu.bin SAVE "MY SAVE" "DESCRIPTION FOR DC"  # 説明文 (CRC 更新)
@@ -665,7 +665,8 @@ KallistiOS の ROM `emu/vmutransfer` で、実機の VMU 全体 (128KB、ブロ�
 
 **PC からの自動操作 (dcload 起動時)**：PC の `VMU_PC_DIR/vmu_cmd` があると、ボタンを押さずにその命令を実行します。
 命令は `dump` / `restore` / `copy` と対象のスロット `a1`〜`d2` (例 `dump restore a1`。`dump` は書き戻しより先に行うので、
-書き戻す前の控えになります)。終わると結果 (`dump OK <crc32>` / `restore OK <crc32>` / `END OK`) を `VMU_PC_DIR/vmu_result.txt` に書き、
+書き戻す前の控えになります)。書き戻し・コピーは今の中身と違うブロックだけを書きます (同じなら 0 ブロック)。
+終わると結果 (`dump OK <crc32>` / `restore OK <crc32> written=<書いたブロック数>` / `END OK`) を `VMU_PC_DIR/vmu_result.txt` に書き、
 `vmu_cmd` を消して dcload に戻ります。`VMU_PC_DIR` はビルド時に `make VMU_PC_DIR=/pc/...` で決めます (既定 `/pc`。
 dc-tool-ip には PC 側のフォルダを指定するオプションがないため)。
 [Dreamcast-Dev-Tools-for-BBA](https://github.com/iwa-kasoutuuuuuka/Dreamcast-Dev-Tools-for-BBA) の `scripts/dc_vmu.ps1` がこれを使い、
@@ -775,6 +776,13 @@ BIOS・Dreamcast のソフト・ゲームのデータは含みません (ユー�
 
 ## 更新履歴
 
+- **2026-11-04** 転送 ROM の書き戻しを差分だけに、PS1 カードの取り込みに容量の確認
+  - `emu/vmutransfer`：書き戻し・コピーで、書く前に各ブロックを読み、違うブロックだけを書く (ルートブロックは従来どおり最後)。
+    画面と `vmu_result.txt` に書いたブロック数。`npm run verify:transfer` に、3 ブロックだけ違う書き戻しと同じ内容のコピー (0 ブロック) の確認を追加
+  - `scripts/vmu_transfer.ps1`：DreamSDK の bash と `H:\DC` の KallistiOS でビルドするように (古い `C:\msys64`・`D:` のパスを修正)。
+    検証のあと `.emu` の設定と VMU を元に戻す
+  - `ps1-import`：書く前に VMU に入るか確かめ、入らなければ必要なブロック数と使えるブロック数を出して止まる (イメージは変えない)。
+    `src/edit.js` の `replaceFit` / `assertFits` (GUI・MCP の書き換えも同じ説明になる)。`test/ps1import.test.js`
 - **2026-11-04** README: Antigravity の MCP 設定の場所を修正 (`~/.gemini/config/mcp_config.json`。`~/.gemini/antigravity/` は読まれない)
 - **2026-11-03** PS1 メモリーカード (.mcr) の出し入れと、転送 ROM の PC からの自動操作
   - CLI `ps1-list` / `ps1-export` / `ps1-import`：bleem2 の `BLEEMMC` (RLE 圧縮した PS1 カード) と 128KB の生イメージ

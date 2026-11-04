@@ -35,10 +35,33 @@ export function applyEdit(vmu, entry, edited, { fixCrc = true } = {}) {
   }
   // 大きくなった (圧縮コンテナなど): 空きを確認してから同じスロットで置き換える。足りなければ何も変えない
   if (entry.type === FILE_GAME) throw new VmuError('ミニゲームファイルは大きくできません');
-  const extra = blocksNeeded - entry.sizeBlocks;
-  const free = vmu.freeBlocks().length;
-  if (extra > free) throw new VmuError(`空き容量不足: あと ${extra} ブロック必要ですが空きは ${free} ブロックです`);
+  assertFits(vmu, entry, data.length);
   return { crc, resized: true, entry: vmu.rewriteFile(entry, data) };
+}
+
+/**
+ * ファイルを length バイトのデータで置き換える (entry が null なら新しく作る) ときに入るか。
+ * 使えるのは VMU の空きブロック + 置き換える今のファイルのブロック。
+ * @returns {{needed: number, current: number, free: number, available: number, fits: boolean}}
+ */
+export function replaceFit(vmu, entry, length) {
+  const needed = Math.ceil(length / BLOCK_SIZE);
+  const current = entry ? entry.sizeBlocks : 0;
+  const free = vmu.freeBlocks().length;
+  const available = free + current;
+  return { needed, current, free, available, fits: needed <= available };
+}
+
+/** replaceFit が入らなければ、必要・使えるブロック数と対処を書いた VmuError を投げる。入れば replaceFit の結果を返す */
+export function assertFits(vmu, entry, length, name = entry?.name ?? '') {
+  const fit = replaceFit(vmu, entry, length);
+  if (fit.fits) return fit;
+  const label = name ? `${name} には ` : '';
+  const breakdown = entry ? ` (空き ${fit.free} + 今の ${entry.name} ${fit.current})` : ` (空き ${fit.free})`;
+  const hint = fit.needed > vmu.root.userBlocks
+    ? `VMU 全体 (${vmu.root.userBlocks} ブロック) より大きいので入りません。データを小さくしてください`
+    : `VMU の他のファイルを消すなどして、あと ${fit.needed - fit.available} ブロック空けてください`;
+  throw new VmuError(`空き容量不足: ${label}${fit.needed} ブロック必要ですが、使えるのは ${fit.available} ブロック${breakdown} です。${hint}`);
 }
 
 /** バイト列パッチ: [{offset, bytes}] を適用したコピーを返す */

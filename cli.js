@@ -10,7 +10,7 @@ import { lookupTitle } from './src/titles.js';
 import { loadTitles } from './src/titles-node.js';
 import { byteVariability, hotRanges } from './src/analyze.js';
 import { parseHeader, headerPosition, toDci, fromDci } from './src/vms.js';
-import { crcStatus, applyEdit, patchBytes, parseHexBytes, diffBytes } from './src/edit.js';
+import { crcStatus, applyEdit, assertFits, patchBytes, parseHexBytes, diffBytes } from './src/edit.js';
 import {
   validateDef, findDefs, readField, formatField, setFields, groupFields, openView, resolveViewFields, checksumStatus,
 } from './src/structdef.js';
@@ -234,10 +234,13 @@ try {
       const card = ps1FromCardFile(readFileSync(args[1]));
       const packed = CONTAINERS['bleem-mc'].encode(card);
       const entry = vmu.find(args[0]);
-      if (entry) applyEdit(vmu, entry, packed, { fixCrc: false });
-      else vmu.writeFile(args[0], packed);
+      // 書き込む前に入るか確かめる (入らなければイメージは書き換えない)
+      const fit = assertFits(vmu, entry, packed.length, args[0]);
+      const after = entry ? applyEdit(vmu, entry, packed, { fixCrc: false }).entry : vmu.writeFile(args[0], packed);
       saveImage(vmu.toBytes());
-      console.log(`${args[0]} を置き換えました (${packed.length} バイト、${Math.ceil(packed.length / 512)} ブロック、セーブ ${ps1Directory(card).length} 件)`);
+      const shrunk = after.sizeBlocks > fit.needed ? ` (データは ${fit.needed} ブロック分。ファイルの大きさは元のまま)` : '';
+      console.log(`${args[0]} を${entry ? '置き換え' : '作成し'}ました (${packed.length} バイト、${after.sizeBlocks} ブロック使用${shrunk}、セーブ ${ps1Directory(card).length} 件)`);
+      console.log(`空き: ${vmu.freeBlocks().length} / ${vmu.root.userBlocks} ブロック`);
       break;
     }
     case 'cat': {
